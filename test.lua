@@ -326,13 +326,35 @@ test "exp_06"
 [[
     a := []
     a.push(1)
+    a.push = nil
+    x := a.push(1)
+    x := a.push
 ]]
 [[
     local a = {}
     a:push(1)
+    a.push = nil
+    local x = a:push(1)
+    local x = a.push
 ]]
 
 test "exp_07"
+[[
+    a := []
+    a::push(1)
+    a::push = nil
+    x := a::push(1)
+    x := a::push
+]]
+[[
+    local a = {}
+    a.push(1)
+    a.push = nil
+    local x = a.push(1)
+    local x = a.push
+]]
+
+test "exp_08"
 [[
     a := true && false && nil && 12.3 && "test"
 ]]

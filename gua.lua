@@ -107,7 +107,7 @@ local nodes = {
     ["value"] =    Fields{"Type", "Pos", "Len", "Value"},
     ["field"] =    Fields{"Type", "Pos", "Len", "Args", "Name"},
     ["index"] =    Fields{"Type", "Pos", "Len", "Expr"},
-    ["id"] =       Fields{"Type", "Pos", "Len", "Name", "Tail", "Args"},
+    ["id"] =       Fields{"Type", "Pos", "Len", "Name", "Tail", "Args", "Self"},
     ["table"] =    Fields{"Type", "Pos", "Len", "List"},
     ["pair"] =     Fields{"Type", "Pos", "Len", "Left", "Right"},
     ["list"] =     Fields{"Type", "Pos", "Len", "List"},
@@ -373,7 +373,8 @@ local function parse_tail(call)
     local tail, i = List{}, 0
     while true do
         local pos = p_tokpos
-        if p_tok == "." then
+        local dot = (p_tok == ".")
+        if dot or p_tok == "::" then
             scan()
             if KEYWORDS[p_lit] == nil then
                 expect("id")
@@ -402,7 +403,7 @@ local function parse_tail(call)
             else
                 call = false
             end
-            local item = Node{"field", pos, last - pos, args or false, name}
+            local item = Node{"field", pos, last - pos, args or false, name, dot}
             i = i + 1
             tail[i] = item
         elseif p_tok == "[" then
@@ -900,7 +901,11 @@ end
 local function visit_field(node)
     local args = node[4]
     if args then
-        v_res[#v_res+1] = ":" .. node[5] .. "("
+        if node[6] then
+            v_res[#v_res+1] = ":" .. node[5] .. "("
+        else
+            v_res[#v_res+1] = "." .. node[5] .. "("
+        end
         for _, v in ipairs(args) do
             visit_expr(v)
             v_res[#v_res+1] = ","
@@ -1073,7 +1078,7 @@ local function visit_if(node)
             _else = _else[6]
         else
             v_res[#v_res+1] = "\n"
-            visit_body(_else) -- if or body
+            visit_body(_else)
             _else = nil
         end
     end
