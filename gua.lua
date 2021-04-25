@@ -24,6 +24,7 @@ setfenv(1, {_G = _G})
 
 local string_byte = _G.string.byte
 local string_sub = _G.string.sub
+local string_rep = _G.string.rep
 local string_format = _G.string.format
 local table_concat = _G.table.concat
 local table_sort = _G.table.sort
@@ -113,7 +114,6 @@ local nodes = {
     ["paren"] =    Fields{"Type", "Pos", "Len", "Expr"},
     ["unop"] =     Fields{"Type", "Pos", "Len", "Op", "Expr"},
     ["binop"] =    Fields{"Type", "Pos", "Len", "Left", "Op", "Right"},
-    ["not"] =      Fields{"Type", "Pos", "Len", "Expr"},
     ["call"] =     Fields{"Type", "Pos", "Len", "ID"},
     ["set"] =      Fields{"Type", "Pos", "Len", "Left", "Right"},
     ["let"] =      Fields{"Type", "Pos", "Len", "Left", "Right"},
@@ -122,10 +122,9 @@ local nodes = {
     ["for"] =      Fields{"Type", "Pos", "Len", "Expr", "Body"},
     ["for_to"] =   Fields{"Type", "Pos", "Len", "ID", "From", "Limit", "Step", "Body"},
     ["for_in"] =   Fields{"Type", "Pos", "Len", "IDs", "INs", "Body"},
-    ["return"] =   Fields{"Type", "Pos", "Len", "Expr"},
+    ["return"] =   Fields{"Type", "Pos", "Len", "List"},
     ["break"] =    Fields{"Type", "Pos", "Len"},
     ["continue"] = Fields{"Type", "Pos", "Len"},
-    ["var"] =      Fields{"Type", "Pos", "Len", "Left", "Right"},
     ["func"] =     Fields{"Type", "Pos", "Len", "Name", "Params", "Body"},
     ["nop"] =      Fields{"Type", "Pos", "Len"},
     ["param"] =    Fields{"Type", "Pos", "Len", "Name"},
@@ -146,7 +145,7 @@ local Node = Type{
     end;
 }
 
-local KEYWORDS = Set{"break", "continue", "else", "false", "for", "func", "if", "in", "nil", "return", "true", "var"}
+local KEYWORDS = Set{"break", "continue", "else", "false", "for", "func", "if", "in", "nil", "return", "true"}
 local LITERALS = Set{"str", "chr", "num", "true", "false", "nil"}
 local REL_OPS = Set{"==", "!=", "<", ">", "<=", ">="}
 local MUL_OPS = Set{"*", "/", "%"}
@@ -297,10 +296,7 @@ local function scan()
             end
         elseif p_tok == "<" then
             next()
-            if p_chr == 0x3E then
-                p_tok = "!="
-                next()
-            elseif p_chr == 0x3D then
+            if p_chr == 0x3D then
                 p_tok = "<="
                 next()
             end
@@ -308,6 +304,24 @@ local function scan()
             next()
             if p_chr == 0x3D then
                 p_tok = ">="
+                next()
+            end
+        elseif p_tok == "&" then
+            next()
+            if p_chr == 0x26 then
+                p_tok = "&&"
+                next()
+            end
+        elseif p_tok == "|" then
+            next()
+            if p_chr == 0x7C then
+                p_tok = "||"
+                next()
+            end
+        elseif p_tok == "!" then
+            next()
+            if p_chr == 0x3D then
+                p_tok = "!="
                 next()
             end
         else
@@ -634,7 +648,7 @@ local function parse_set_or_call()
             scan()
         end
         for _, v in ipairs(left) do
-            p_vars[name] = v
+            p_vars[v[4]] = v
         end
         return Node{"let", pos, p_endpos-pos, left, right}
     end
@@ -662,6 +676,10 @@ local function parse_for()
     local pos = p_tokpos
     skip("for")
     local id, call
+    if p_tok == "{" then
+        local body = parse_body()
+        return Node{"for", pos, p_endpos-pos, false, body}
+    end
     if p_tok == "id" then
         id, call = parse_id(false)
         -- cheatcode
@@ -676,7 +694,7 @@ local function parse_for()
     end
     assert(id)
     local vars = List{[id[4]] = id}
-    if p_tok == "=" then
+    if p_tok == ":=" then
         scan()
         local from = parse_expr()
         skip(",")
@@ -717,12 +735,18 @@ end
 local function parse_return()
     local pos = p_tokpos
     skip("return")
-    local expr
+    local list = List{}
     if p_tok ~= "}" then
-        expr = parse_expr()
+        while true do
+            list[#list+1] = parse_expr()
+            if p_tok ~= "," then
+                break
+            end
+            scan()
+        end
     end
     expect("}")
-    return Node{"return", pos, p_endpos-pos, expr}
+    return Node{"return", pos, p_endpos-pos, list}
 end
 
 local function parse_break()
@@ -739,38 +763,14 @@ local function parse_continue()
     return Node{"continue", pos, 8}
 end
 
-local function parse_var()
-    local pos = p_tokpos
-    local left = List{}
-    expect("var")
-    repeat
-        scan()
-        expect("id")
-        local node = Node{"id", p_tokpos, #p_lit, p_lit, false, false}
-        if p_vars[p_lit] then
-            errorf("identifier '%s' already declared", p_lit)
-        end
-        p_vars[p_lit] = node
-        left[#left+1] = node
-        scan()
-    until p_tok ~= ","
-    local right
-    if p_tok == "=" then
-        right = List{}
-        repeat
-            scan()
-            right[#right+1] = parse_expr()
-        until p_tok ~= ","
-    end
-    return Node{"var", pos, p_endpos-pos, left, right or false}
-end
-
 local function parse_params()
     local pos = p_tokpos
     skip("(")
     local list = List{}
     while p_tok == "id" do
-        list[#list+1] = Node{"param", p_tokpos, #p_lit, p_lit}
+        local id = Node{"param", p_tokpos, #p_lit, p_lit}
+        list[#list+1] = id
+        p_vars[p_lit] = id
         scan()
         if p_tok ~= "," then
             break
@@ -800,8 +800,6 @@ end
 local function parse_statement()
     if p_tok == "id" then
         return parse_set_or_call()
-    elseif p_tok == "var" then
-        return parse_var()
     elseif p_tok == "func" then
         return parse_function()
     elseif p_tok == "if" then
@@ -840,7 +838,7 @@ parse_body = function(vars)
     return Node{"body", pos, p_endpos-pos, body}
 end
 
-local function parse_module(src)
+local function parse_module(src, vars)
     p_src = src
     p_line = 1
     p_curpos = 0
@@ -856,7 +854,7 @@ local function parse_module(src)
     p_scope = List{}
     next()
     scan()
-    open_scope()
+    open_scope(vars)
     local body = List{}
     while true do
         local stmt = parse_statement()
@@ -871,8 +869,344 @@ local function parse_module(src)
     return module
 end
 
+local v_res = {}
+local v_level = 0
+local LUA_OPS = setmetatable({
+    ["!"] = "not ";
+    ["&&"] = "and";
+    ["||"] = "or";
+    ["!="] = "~=";
+}, {
+    __index = function(t, k)
+        return k
+    end;
+})
+
+local function space()
+    return string_rep("    ", v_level)
+end
+
+local visit_expr
+
+local function visit_value(node)
+    v_res[#v_res+1] = tostring(node[4] or "nil")
+end
+
+local function visit_field(node)
+    local args = node[4]
+    if args then
+        v_res[#v_res+1] = ":" .. node[5] .. "("
+        for _, v in ipairs(args) do
+            visit_expr(v)
+            v_res[#v_res+1] = ","
+        end
+        v_res[#v_res] = ")"
+    else
+        v_res[#v_res+1] = "." .. node[5]
+    end
+end
+
+local function visit_index(node)
+    v_res[#v_res+1] = "["
+    visit_expr(node[4])
+    v_res[#v_res+1] = "]"
+end
+
+local function visit_id(node)
+    v_res[#v_res + 1] = node[4]
+    local tail, args = node[5], node[6]
+    if tail then
+        for _, v in ipairs(tail) do
+            if v[1] == "field" then
+                visit_field(v)
+            else
+                visit_index(v)
+            end
+        end
+    end
+    if args then
+        v_res[#v_res+1] = "("
+        for _, v in ipairs(args) do
+            visit_expr(v)
+            v_res[#v_res+1] = ", "
+        end
+        v_res[#v_res] = ")"
+    end
+end
+
+local function visit_pair(node)
+    visit_expr(node[4])
+    v_res[#v_res+1] = " = "
+    visit_expr(node[5])
+end
+
+local function visit_table(node)
+    v_res[#v_res+1] = "{\n"
+    v_level = v_level + 1
+    for _, v in ipairs(node[4]) do
+        v_res[#v_res+1] = space()
+        if v[1] == "pair" then
+            visit_pair(v)
+            v_res[#v_res+1] = ";\n"
+        else
+            visit_expr(v)
+            v_res[#v_res+1] = ",\n"
+        end
+    end
+    v_level = v_level - 1
+    v_res[#v_res+1] = space() .. "}"
+end
+
+local function visit_list(node)
+    v_res[#v_res+1] = "{"
+    local list = node[4]
+    if #list > 0 then
+        for _, v in ipairs(list) do
+            visit_expr(v)
+            v_res[#v_res+1] = ", "
+        end
+        v_res[#v_res] = ""
+    end
+    v_res[#v_res+1] = "}"
+end
+
+local function visit_paren(node)
+    v_res[#v_res+1] = "("
+    visit_expr(node[4])
+    v_res[#v_res+1] = ")"
+end
+
+local function visit_unop(node)
+    v_res[#v_res+1] = LUA_OPS[node[4]]
+    visit_expr(node[5])
+end
+
+local function visit_binop(node)
+    visit_expr(node[4])
+    v_res[#v_res+1] = " " .. LUA_OPS[node[5]] .. " "
+    visit_expr(node[6])
+end
+
+visit_expr = function(node)
+    local t = node[1]
+    if t == "id" then
+        visit_id(node)
+    elseif t == "binop" then
+        visit_binop(node)
+    elseif t == "unop" then
+        visit_unop(node)
+    elseif t == "paren" then
+        visit_paren(node)
+    elseif t == "value" then
+        visit_value(node)
+    elseif t == "table" then
+        visit_table(node)
+    elseif t == "list" then
+        visit_list(node)
+    else
+        errorf("unknown node type: '%s'", t)
+    end
+end
+
+local visit_stmt
+
+local function visit_body(node)
+    v_level = v_level + 1
+    for _, v in ipairs(node[4]) do
+        visit_stmt(v)
+    end
+    v_level = v_level - 1
+end
+
+local function visit_call(node)
+    v_res[#v_res+1] = space()
+    visit_id(node[4])
+    v_res[#v_res+1] = "\n"
+end
+
+local function visit_set(node)
+    v_res[#v_res+1] = space()
+    for _, v in ipairs(node[4]) do
+        visit_id(v)
+        v_res[#v_res+1] = ", "
+    end
+    v_res[#v_res] = " = "
+    for _, v in ipairs(node[5]) do
+        visit_expr(v)
+        v_res[#v_res+1] = ", "
+    end
+    v_res[#v_res] = "\n"
+end
+
+local function visit_let(node)
+    v_res[#v_res+1] = space() .. "local "
+    for _, v in ipairs(node[4]) do
+        visit_id(v)
+        v_res[#v_res+1] = ", "
+    end
+    v_res[#v_res] = " = "
+    for _, v in ipairs(node[5]) do
+        visit_expr(v)
+        v_res[#v_res+1] = ", "
+    end
+    v_res[#v_res] = "\n"
+end
+
+local function visit_if(node)
+    v_res[#v_res+1] = space() .. "if "
+    visit_expr(node[4])
+    v_res[#v_res+1] = " then\n"
+    visit_body(node[5])
+    local _else = node[6]
+    while _else do
+        v_res[#v_res+1] = space() .. "else"
+        if _else[1] == "if" then
+            v_res[#v_res+1] = "if "
+            visit_expr(_else[4])
+            v_res[#v_res+1] = " then\n"
+            visit_body(_else[5])
+            _else = _else[6]
+        else
+            v_res[#v_res+1] = "\n"
+            visit_body(_else) -- if or body
+            _else = nil
+        end
+    end
+    v_res[#v_res+1] = space() .. "end\n"
+end
+
+local function visit_for(node)
+    v_res[#v_res+1] = space() .. "while "
+    local expr = node[4]
+    if expr then
+        visit_expr(expr)
+    else
+        v_res[#v_res+1] = "true"
+    end
+    v_res[#v_res+1] = " do\n"
+    visit_body(node[5])
+    v_res[#v_res+1] = space() .. "end\n"
+end
+
+local function visit_for_to(node)
+    v_res[#v_res+1] = space() .. "for "
+    visit_id(node[4])
+    v_res[#v_res+1] = " = "
+    visit_expr(node[5])
+    v_res[#v_res+1] = ", "
+    visit_expr(node[6])
+    local step = node[7]
+    if step then
+        v_res[#v_res+1] = ", "
+        visit_expr(step)
+    end
+    v_res[#v_res+1] = " do\n"
+    visit_body(node[8])
+    v_res[#v_res+1] = space() .. "end\n"
+end
+
+local function visit_for_in(node)
+    v_res[#v_res+1] = space() .. "for "
+    for _, v in ipairs(node[4]) do
+        visit_id(v)
+        v_res[#v_res+1] = ", "
+    end
+    v_res[#v_res] = " in "
+    for _, v in ipairs(node[5]) do
+        visit_expr(v)
+        v_res[#v_res+1] = ", "
+    end
+    v_res[#v_res] = " do\n"
+    visit_body(node[6])
+    v_res[#v_res+1] = space() .. "end\n"
+end
+
+local function visit_return(node)
+    local list = node[4]
+    v_res[#v_res+1] = space() .. "return"
+    if list then
+        v_res[#v_res+1] = " "
+        for _, v in ipairs(list) do
+            visit_expr(v)
+            v_res[#v_res+1] = ", "
+        end
+        v_res[#v_res] = ""
+    end
+    v_res[#v_res+1] = "\n"
+end
+
+local function visit_break(node)
+    v_res[#v_res+1] = space() .. "break\n"
+end
+
+local function visit_continue(node)
+    v_res[#v_res+1] = space() .. "continue\n"
+end
+
+local function visit_params(node)
+    local t = {}
+    for _, v in ipairs(node[4]) do
+        t[#t+1] = v[4]
+    end
+    v_res[#v_res+1] = "("..table_concat(t, ", ")..")\n"
+end
+
+local function visit_func(node)
+    v_res[#v_res+1] = space() .. "local function " .. node[4]
+    visit_params(node[5])
+    visit_body(node[6])
+    v_res[#v_res+1] = space() .. "end\n"
+end
+
+local function visit_nop(node)
+    v_res[#v_res] = ";\n"
+end
+
+visit_stmt = function(node)
+    local t = node[1]
+    if t == "call" then
+        visit_call(node)
+    elseif t == "set" then
+        visit_set(node)
+    elseif t == "let" then
+        visit_let(node)
+    elseif t == "if" then
+        visit_if(node)
+    elseif t == "body" then
+        visit_body(node)
+    elseif t == "for" then
+        visit_for(node)
+    elseif t == "for_to" then
+        visit_for_to(node)
+    elseif t == "for_in" then
+        visit_for_in(node)
+    elseif t == "return" then
+        visit_return(node)
+    elseif t == "break" then
+        visit_break(node)
+    elseif t == "continue" then
+        visit_continue(node)
+    elseif t == "func" then
+        visit_func(node)
+    elseif t == "nop" then
+        visit_nop(node)
+    else
+        errorf("unknown node type: %s", t)
+    end
+end
+
+local function visit_module(node, level)
+    v_res = {}
+    v_level = level or 0
+    for _, v in ipairs(node[2]) do
+        visit_stmt(v)
+    end
+    return table_concat(v_res)
+end
+
 return {
-    Node = Node,
-    nodes = nodes,
-    parse_module = parse_module
+    Node = Node;
+    nodes = nodes;
+    parse_module = parse_module;
+    visit_module = visit_module;
 }
