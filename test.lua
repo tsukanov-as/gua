@@ -321,3 +321,21 @@ test "exp_05"
 [[
     local a = {1, 2, 3}
 ]]
+
+test "exp_06"
+[[
+    a := []
+    a.push(1)
+]]
+[[
+    local a = {}
+    a:push(1)
+]]
+
+test "exp_07"
+[[
+    a := true && false && nil && 12.3 && "test"
+]]
+[[
+    local a = true and false and nil and 12.3 and "test"
+]]

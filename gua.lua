@@ -889,7 +889,12 @@ end
 local visit_expr
 
 local function visit_value(node)
-    v_res[#v_res+1] = tostring(node[4] or "nil")
+    local v = node[4]
+    if type(v) == "string" then
+        v_res[#v_res+1] = '"' .. v .. '"'
+    else
+        v_res[#v_res+1] = tostring(v)
+    end
 end
 
 local function visit_field(node)
