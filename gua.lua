@@ -150,7 +150,7 @@ local LITERALS = Set{"str", "chr", "num", "true", "false", "nil"}
 local REL_OPS = Set{"==", "!=", "<", ">", "<=", ">="}
 local MUL_OPS = Set{"*", "/", "%"}
 local ADD_OPS = Set{"+", "-"}
-local UNR_OPS = Set{"+", "-", "!"}
+local UNR_OPS = Set{"+", "-", "!", "#"}
 
 local LF = 0x0A
 local ALPHA = 1

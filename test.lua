@@ -361,3 +361,21 @@ test "exp_08"
 [[
     local a = true and false and nil and 12.3 and "test"
 ]]
+
+test "exp_09"
+[[
+    a := (1 + 2) * 3
+]]
+[[
+    local a = (1 + 2) * 3
+]]
+
+test "exp_10"
+[[
+    a := []
+    a[#a + 1] = 1
+]]
+[[
+    local a = {}
+    a[#a + 1] = 1
+]]
