@@ -390,4 +390,12 @@ test "exp_11"
     local a = 1 + -2 ^ 3 * 4 ^ 5
 ]]
 
+test "exp_12"
+[[
+    a := "abc" .. "def" .. 123 + 1
+]]
+[[
+    local a = "abc" .. "def" .. 123 + 2
+]]
+
 print("OK.", os.clock())

@@ -324,6 +324,12 @@ local function scan()
                 p_tok = "!="
                 next()
             end
+        elseif p_tok == "." then
+            next()
+            if p_chr == 0x2E then
+                p_tok = ".."
+                next()
+            end
         else
             next()
         end
@@ -581,13 +587,24 @@ local function parse_add()
     return left
 end
 
-local function parse_rel()
+local function parse_cat()
     local pos = p_tokpos
     local left = parse_add()
+    while p_tok == ".." do
+        scan()
+        local right = parse_add()
+        left = Node{"binop", pos, p_endpos-pos, left, "..", right}
+    end
+    return left
+end
+
+local function parse_rel()
+    local pos = p_tokpos
+    local left = parse_cat()
     while REL_OPS[p_tok] do
         local op = p_tok
         scan()
-        local right = parse_add()
+        local right = parse_cat()
         left = Node{"binop", pos, p_endpos-pos, left, op, right}
     end
     return left
