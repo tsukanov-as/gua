@@ -10,5 +10,14 @@
                 "file": "${file}"
             }
         },
+        {
+            "name": "test",
+            "type": "lua-local",
+            "request": "launch",
+            "program": {
+                "command": "luajit"
+            },
+            "args": ["test.lua"]
+        }
     ]
 }
