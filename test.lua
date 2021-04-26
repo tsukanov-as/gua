@@ -11,7 +11,9 @@ local function test(name)
         assert(r, m)
         return function(want)
             local res = gua.visit_module(m, 1)
-            assert(res == want, "failed: " .. name .. ", res:\n" .. res)
+            if res ~= want then
+                print("failed: " .. name .. "\nres:\n" .. res .. "\nast:\n" .. tostring(m))
+            end
         end
     end
 end
@@ -379,3 +381,13 @@ test "exp_10"
     local a = {}
     a[#a + 1] = 1
 ]]
+
+test "exp_11"
+[[
+    a := 1 + -2 ^ 3 * 4^5
+]]
+[[
+    local a = 1 + -2 ^ 3 * 4 ^ 5
+]]
+
+print("OK.", os.clock())

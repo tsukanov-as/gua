@@ -159,7 +159,7 @@ local SPACE = 3
 
 local MAP = {[string_byte'"'] = "str", [string_byte"'"] = "chr"}
 do
-    local sym = "()[]{}*:;.,/+-=<>#%|&!"
+    local sym = "()[]{}*:;.,/+-=<>#%|&!^"
     for i = 1, #sym do
         MAP[string_byte(sym, i)] = string_sub(sym, i, i)
     end
@@ -525,16 +525,27 @@ local function parse_operand()
     return node
 end
 
+local function parse_pow()
+    local pos = p_tokpos
+    local left = parse_operand()
+    while p_tok == "^" do
+        scan()
+        local right = parse_operand()
+        left = Node{"binop", pos, p_endpos-pos, left, "^", right}
+    end
+    return left
+end
+
 local function parse_unary()
     local pos = p_tokpos
     local expr
     if UNR_OPS[p_tok] then
         local op = p_tok
         scan()
-        local right = parse_operand()
+        local right = parse_pow()
         expr = Node{"unop", pos, p_endpos-pos, op, right}
     else
-        expr = parse_operand()
+        expr = parse_pow()
     end
     return expr
 end
