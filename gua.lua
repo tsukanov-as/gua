@@ -174,7 +174,7 @@ do
     for i = 1, #abc do
         MAP[string_byte(abc, i)] = ALPHA
     end
-    local hex = "ABDEFabcdef0123456789"
+    local hex = "ABCDEFabcdef0123456789"
     for i = 1, #hex do
         HEX[string_byte(hex, i)] = true
     end
@@ -275,7 +275,7 @@ local function scan()
             end
             p_tok = "num"
             p_lit = string_sub(p_src, beg, p_curpos-1)
-            p_val = tonumber(p_lit, base)
+            p_val = assert(tonumber(p_lit, base))
         elseif p_tok == "str" then
             local beg = p_curpos
             repeat
