@@ -550,6 +550,8 @@ local function parse_list()
     return Node{"list", pos, p_endpos-pos, list}
 end
 
+local parse_func
+
 local function parse_operand()
     local node
     if LITERALS[p_tok] then
@@ -563,6 +565,8 @@ local function parse_operand()
         node = parse_table()
     elseif p_tok == "[" then
         node = parse_list()
+    elseif p_tok == "func" then
+        node = parse_func(true)
     else
         errorf("expected operand, found '%s'", p_tok)
     end
@@ -848,19 +852,24 @@ local function parse_params()
     return Node{"params", pos, p_endpos-pos, list}
 end
 
-local function parse_function()
+parse_func = function(lambda)
     local pos = p_tokpos
+    local name = false
     skip("func")
-    expect("id")
-    local name = p_lit
-    assert(not find_var(name))
-    scan()
+    if not lambda then
+        expect("id")
+        name = p_lit
+        assert(not find_var(name))
+        scan()
+    end
     open_scope()
     local params = parse_params()
     local body = parse_body()
     close_scope()
     local node = Node{"func", pos, p_endpos-pos, name, params, body}
-    p_vars[name] = node
+    if not lambda then
+        p_vars[name] = node
+    end
     return node
 end
 
@@ -868,7 +877,7 @@ local function parse_statement()
     if p_tok == "id" then
         return parse_set_or_call()
     elseif p_tok == "func" then
-        return parse_function()
+        return parse_func()
     elseif p_tok == "if" then
         return parse_if()
     elseif p_tok == "{" then
@@ -1063,6 +1072,8 @@ local function visit_binop(node)
     visit_expr(node[6])
 end
 
+local visit_func
+
 visit_expr = function(node)
     local t = node[1]
     if t == "id" then
@@ -1079,6 +1090,8 @@ visit_expr = function(node)
         visit_table(node)
     elseif t == "list" then
         visit_list(node)
+    elseif t == "func" then
+        visit_func(node, true)
     else
         errorf("unknown node type: '%s'", t)
     end
@@ -1227,11 +1240,18 @@ local function visit_params(node)
     v_res[#v_res+1] = "("..table_concat(t, ", ")..")\n"
 end
 
-local function visit_func(node)
-    v_res[#v_res+1] = space() .. "local function " .. node[4]
+visit_func = function(node, lambda)
+    if lambda then
+        v_res[#v_res+1] = "function"
+    else
+        v_res[#v_res+1] = space() .. "local function " .. node[4]
+    end
     visit_params(node[5])
     visit_body(node[6])
-    v_res[#v_res+1] = space() .. "end\n"
+    v_res[#v_res+1] = space() .. "end"
+    if not lambda then
+        v_res[#v_res+1] = "\n"
+    end
 end
 
 local function visit_nop(node)

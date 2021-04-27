@@ -436,4 +436,18 @@ test "exp_14"
     local x = 3
 ]]
 
+test "exp_15"
+[[
+    z := 1
+    x := func(y) {
+        return y + z
+    }
+]]
+[[
+    local z = 1
+    local x = function(y)
+        return y + z
+    end
+]]
+
 print("OK.", os.clock())
