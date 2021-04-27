@@ -416,4 +416,18 @@ test "exp_13"
     local x = 0.0012
 ]]
 
+test "exp_14"
+[[
+    x := 0xAF
+    x := 0x1F
+    x := 0b0001
+    x := 0b0011
+]]
+[[
+    local x = 175
+    local x = 31
+    local x = 1
+    local x = 3
+]]
+
 print("OK.", os.clock())

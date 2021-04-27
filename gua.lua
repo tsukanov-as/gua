@@ -158,6 +158,7 @@ local DIGIT = 2
 local SPACE = 3
 
 local MAP = {[string_byte'"'] = "str", [string_byte"'"] = "chr"}
+local HEX = {}
 do
     local sym = "()[]{}*:;.,/+-=<>#%|&!^"
     for i = 1, #sym do
@@ -172,6 +173,10 @@ do
     local abc = "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     for i = 1, #abc do
         MAP[string_byte(abc, i)] = ALPHA
+    end
+    local hex = "ABDEFabcdef0123456789"
+    for i = 1, #hex do
+        HEX[string_byte(hex, i)] = true
     end
 end
 
@@ -227,28 +232,50 @@ local function scan()
             end
         elseif p_tok == DIGIT then
             local beg = p_curpos
-            repeat
-                p_tok = MAP[next()]
-            until p_tok ~= DIGIT
-            if p_chr == 0x2E then -- .
-                repeat
-                    p_tok = MAP[next()]
-                until p_tok ~= DIGIT
-            end
-            if p_chr == 0x45 or p_chr == 0x65 then -- E, e
+            local base = 10
+            if p_chr == 0x30 then -- 0
                 next()
-                if p_chr == 0x2B or p_chr == 0x2D then -- +, -
+                if p_chr == 0x58 or p_chr == 0x78 then -- X, x
                     next()
+                    assert(HEX[p_chr], 'expected hex digit at pos: ' .. p_curpos)
+                    repeat
+                        next()
+                    until not HEX[p_chr]
+                    base = 16
+                elseif p_chr == 0x42 or p_chr == 0x62 then -- B, b
+                    next()
+                    beg = p_curpos
+                    assert(p_chr == 0x30 or p_chr == 0x31, 'expected bin digit at pos: ' .. p_curpos)
+                    repeat
+                        next()
+                    until p_chr ~= 0x30 and p_chr ~= 0x31
+                    base = 2
                 end
-                p_tok = MAP[p_chr]
-                assert(p_tok == DIGIT, 'expected digit at pos: ' .. p_curpos)
+            end
+            if base == 10 then
                 repeat
                     p_tok = MAP[next()]
                 until p_tok ~= DIGIT
+                if p_chr == 0x2E then -- .
+                    repeat
+                        p_tok = MAP[next()]
+                    until p_tok ~= DIGIT
+                end
+                if p_chr == 0x45 or p_chr == 0x65 then -- E, e
+                    next()
+                    if p_chr == 0x2B or p_chr == 0x2D then -- +, -
+                        next()
+                    end
+                    p_tok = MAP[p_chr]
+                    assert(p_tok == DIGIT, 'expected digit at pos: ' .. p_curpos)
+                    repeat
+                        p_tok = MAP[next()]
+                    until p_tok ~= DIGIT
+                end
             end
             p_tok = "num"
             p_lit = string_sub(p_src, beg, p_curpos-1)
-            p_val = tonumber(p_lit)
+            p_val = tonumber(p_lit, base)
         elseif p_tok == "str" then
             local beg = p_curpos
             repeat
