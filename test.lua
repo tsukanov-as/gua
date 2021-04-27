@@ -398,4 +398,22 @@ test "exp_12"
     local a = "abc" .. "def" .. 123 + 1
 ]]
 
+test "exp_13"
+[[
+    x := 1e3
+    x := 1e-3
+    x := 1.e3
+    x := 1.e-3
+    x := 1.2e3
+    x := 1.2e-3
+]]
+[[
+    local x = 1000
+    local x = 0.001
+    local x = 1000
+    local x = 0.001
+    local x = 1200
+    local x = 0.0012
+]]
+
 print("OK.", os.clock())

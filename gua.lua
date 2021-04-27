@@ -230,7 +230,18 @@ local function scan()
             repeat
                 p_tok = MAP[next()]
             until p_tok ~= DIGIT
-            if MAP[p_chr] == "." then
+            if p_chr == 0x2E then -- .
+                repeat
+                    p_tok = MAP[next()]
+                until p_tok ~= DIGIT
+            end
+            if p_chr == 0x45 or p_chr == 0x65 then -- E, e
+                next()
+                if p_chr == 0x2B or p_chr == 0x2D then -- +, -
+                    next()
+                end
+                p_tok = MAP[p_chr]
+                assert(p_tok == DIGIT, 'expected digit at pos: ' .. p_curpos)
                 repeat
                     p_tok = MAP[next()]
                 until p_tok ~= DIGIT
