@@ -472,7 +472,7 @@ test "exp_15"
         [3] = 4;
         [true] = 5;
         [next] = 6;
-        [next)] = 7;
+        [next()] = 7;
         [mock.field] = 8;
         [mock:field()] = 9;
         [{mock:field(1, 2)}] = 10;

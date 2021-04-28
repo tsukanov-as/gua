@@ -1021,7 +1021,7 @@ local function visit_id(node)
     end
     if args then
         v_res[#v_res+1] = "("
-        if #args then
+        if #args > 0 then
             for _, v in ipairs(args) do
                 visit_expr(v)
                 v_res[#v_res+1] = ", "
