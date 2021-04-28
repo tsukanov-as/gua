@@ -479,4 +479,24 @@ test "exp_15"
     }
 ]]
 
+test "inc_01"
+[[
+    x := 0
+    x += 2
+]]
+[[
+    local x = 0
+    x = x + 2
+]]
+
+test "dec_01"
+[[
+    x := 0
+    x -= 2
+]]
+[[
+    local x = 0
+    x = x - 2
+]]
+
 print("OK.", os.clock())

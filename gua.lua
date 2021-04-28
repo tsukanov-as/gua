@@ -117,6 +117,8 @@ local nodes = {
     ["call"] =     Fields{"Type", "Pos", "Len", "ID"},
     ["set"] =      Fields{"Type", "Pos", "Len", "Left", "Right"},
     ["let"] =      Fields{"Type", "Pos", "Len", "Left", "Right"},
+    ["inc"] =      Fields{"Type", "Pos", "Len", "ID", "Expr"},
+    ["dec"] =      Fields{"Type", "Pos", "Len", "ID", "Expr"},
     ["if"] =       Fields{"Type", "Pos", "Len", "Expr", "Then", "Else"},
     ["body"] =     Fields{"Type", "Pos", "Len", "Body"},
     ["for"] =      Fields{"Type", "Pos", "Len", "Expr", "Body"},
@@ -693,6 +695,18 @@ local function parse_set_or_call()
         assert(find_var(name))
         return Node{"call", pos, p_endpos-pos, id}
     end
+    if p_tok == "+=" then
+        assert(find_var(name))
+        scan()
+        local expr = assert(parse_add())
+        return Node{"inc", pos, p_endpos-pos, id, expr}
+    end
+    if p_tok == "-=" then
+        assert(find_var(name))
+        scan()
+        local expr = assert(parse_add())
+        return Node{"dec", pos, p_endpos-pos, id, expr}
+    end
     local left = List{id}
     while p_tok == "," do
         scan()
@@ -702,7 +716,9 @@ local function parse_set_or_call()
         scan()
     end
     if p_tok == "=" then
-        assert(find_var(name))
+        for _, id in ipairs(left) do
+            assert(find_var(id[4]))
+        end
         scan()
         local right = List{}
         while true do
@@ -1008,7 +1024,7 @@ local function visit_index(node)
 end
 
 local function visit_id(node)
-    v_res[#v_res + 1] = node[4]
+    v_res[#v_res+1] = node[4]
     local tail, args = node[5], node[6]
     if tail then
         for _, v in ipairs(tail) do
@@ -1149,6 +1165,26 @@ local function visit_set(node)
     v_res[#v_res] = "\n"
 end
 
+local function visit_inc(node)
+    v_res[#v_res+1] = space()
+    visit_id(node[4])
+    v_res[#v_res+1] = " = "
+    visit_id(node[4])
+    v_res[#v_res+1] = " + "
+    visit_expr(node[5])
+    v_res[#v_res+1] = "\n"
+end
+
+local function visit_dec(node)
+    v_res[#v_res+1] = space()
+    visit_id(node[4])
+    v_res[#v_res+1] = " = "
+    visit_id(node[4])
+    v_res[#v_res+1] = " - "
+    visit_expr(node[5])
+    v_res[#v_res+1] = "\n"
+end
+
 local function visit_let(node)
     v_res[#v_res+1] = space() .. "local "
     for _, v in ipairs(node[4]) do
@@ -1286,6 +1322,10 @@ visit_stmt = function(node)
         visit_call(node)
     elseif t == "set" then
         visit_set(node)
+    elseif t == "inc" then
+        visit_inc(node)
+    elseif t == "dec" then
+        visit_dec(node)
     elseif t == "let" then
         visit_let(node)
     elseif t == "if" then
