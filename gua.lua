@@ -518,8 +518,15 @@ local function parse_table()
         if p_tok == ":" then
             local line = p_line
             scan()
-            if left[1] == "id" and (left[5] or left[6]) then
-                errorf("unexpected ':' at pos: ", line)
+            if left[1] == "id" then
+                if left[5] or left[6] then
+                    errorf("unexpected ':' at line: ", line)
+                end
+            elseif left[1] == "list" then
+                if #left[4] ~= 1 then
+                    errorf("wrong key at line: ", line)
+                end
+                left = Node{"index", pos, p_endpos-pos, left[4][1]}
             end
             local right = assert(parse_expr())
             list[#list+1] = Node{"pair", pos, p_endpos-pos, left, right}
@@ -981,11 +988,14 @@ local function visit_field(node)
         else
             v_res[#v_res+1] = "." .. node[5] .. "("
         end
-        for _, v in ipairs(args) do
-            visit_expr(v)
-            v_res[#v_res+1] = ","
+        if #args > 0 then
+            for _, v in ipairs(args) do
+                visit_expr(v)
+                v_res[#v_res+1] = ", "
+            end
+            v_res[#v_res] = ""
         end
-        v_res[#v_res] = ")"
+        v_res[#v_res+1] = ")"
     else
         v_res[#v_res+1] = "." .. node[5]
     end
@@ -1011,16 +1021,28 @@ local function visit_id(node)
     end
     if args then
         v_res[#v_res+1] = "("
-        for _, v in ipairs(args) do
-            visit_expr(v)
-            v_res[#v_res+1] = ", "
+        if #args then
+            for _, v in ipairs(args) do
+                visit_expr(v)
+                v_res[#v_res+1] = ", "
+            end
+            v_res[#v_res] = ""
         end
-        v_res[#v_res] = ")"
+        v_res[#v_res+1] = ")"
     end
 end
 
 local function visit_pair(node)
-    visit_expr(node[4])
+    local key = node[4]
+    if key[1] == "id" and not key[5] and not key[6] then
+        visit_expr(key)
+    elseif key[1] == "index" then
+        visit_index(key)
+    else
+        v_res[#v_res+1] = "["
+        visit_expr(key)
+        v_res[#v_res+1] = "]"
+    end
     v_res[#v_res+1] = " = "
     visit_expr(node[5])
 end

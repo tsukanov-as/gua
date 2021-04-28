@@ -5,6 +5,7 @@ local function test(name)
         print = {"id", 0, 0, "print", false, false};
         pairs = {"id", 0, 0, "pairs", false, false};
         next =  {"id", 0, 0, "next", false, false};
+        mock =  {"id", 0, 0, "mock", false, false};
     }
     return function(src)
         local r, m = pcall(gua.parse_module, src, vars)
@@ -448,6 +449,34 @@ test "exp_15"
     local x = function(y)
         return y + z
     end
+]]
+
+test "exp_15"
+[=[
+    x := {
+        name1: 1;
+        "name2": 2;
+        3: 4;
+        true: 5;
+        [next]: 6;
+        [next()]: 7;
+        [mock.field]: 8;
+        [mock.field()]: 9;
+        [[mock.field(1, 2)]]: 10;
+    }
+]=]
+[[
+    local x = {
+        name1 = 1;
+        ["name2"] = 2;
+        [3] = 4;
+        [true] = 5;
+        [next] = 6;
+        [next)] = 7;
+        [mock.field] = 8;
+        [mock:field()] = 9;
+        [{mock:field(1, 2)}] = 10;
+    }
 ]]
 
 print("OK.", os.clock())
