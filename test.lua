@@ -495,6 +495,16 @@ test "exp_15"
     }
 ]]
 
+test "exp_16"
+[[
+    x := 'A'
+    x := '''
+]]
+[[
+    local x = 65
+    local x = 39
+]]
+
 test "inc_01"
 [[
     x := 0

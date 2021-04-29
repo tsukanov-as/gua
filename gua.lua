@@ -294,13 +294,11 @@ local function scan()
             next()
         elseif p_tok == "chr" then
             local beg = p_curpos
-            repeat
-                if next() == 0x5C then -- \
-                    next()
-                end
-            until p_chr == 0x27 or p_chr == LF or p_chr == nil
+            next()
+            next()
             assert(p_chr == 0x27, "expected ' at pos: " .. p_curpos)
             p_lit = string_sub(p_src, beg+1, p_curpos-1)
+            p_val = string_byte(p_lit)
             next()
         elseif p_tok == ":" then
             next()
