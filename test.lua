@@ -271,6 +271,20 @@ test "for_06"
     end
 ]]
 
+test "for_07"
+[[
+    y := 0
+    for y ^ 2 {
+        print(y)
+    }
+]]
+[[
+    local y = 0
+    while y ^ 2 do
+        print(y)
+    end
+]]
+
 test "exp_01"
 [[
     x := 1 + 2 * 3 / 4 % 5

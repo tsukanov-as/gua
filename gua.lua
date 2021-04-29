@@ -587,7 +587,14 @@ end
 
 local function parse_pow()
     local pos = p_tokpos
-    local left = parse_operand()
+    local left = p_left
+    if left then
+        -- cheatcode
+        p_left = nil
+        pos = left[2]
+    else
+        left = parse_operand()
+    end
     while p_tok == "^" do
         scan()
         local right = parse_operand()
@@ -612,14 +619,7 @@ end
 
 local function parse_mul()
     local pos = p_tokpos
-    local left = p_left
-    if left then
-        -- cheatcode
-        p_left = nil
-        pos = left[2]
-    else
-        left = parse_unary()
-    end
+    local left = parse_unary()
     while MUL_OPS[p_tok] do
         local op = p_tok
         scan()
