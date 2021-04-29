@@ -423,7 +423,8 @@ test "exp_14"
     x := 0x1F
     x := 0XABCDEF
     x := 0Xabcdef
-    x := 0X0123456789
+    x := 0X23456789
+    x := 0XFFFFFFFF
     x := 0b0001
     x := 0b0011
 ]]
@@ -432,7 +433,8 @@ test "exp_14"
     local x = 31
     local x = 11259375
     local x = 11259375
-    local x = 4886718345
+    local x = 591751049
+    local x = 4294967295
     local x = 1
     local x = 3
 ]]

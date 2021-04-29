@@ -239,11 +239,13 @@ local function scan()
                 next()
                 if p_chr == 0x58 or p_chr == 0x78 then -- X, x
                     next()
+                    beg = p_curpos
                     assert(HEX[p_chr], 'expected hex digit at pos: ' .. p_curpos)
                     repeat
                         next()
                     until not HEX[p_chr]
                     base = 16
+                    assert(p_curpos-beg <= 8)
                 elseif p_chr == 0x42 or p_chr == 0x62 then -- B, b
                     next()
                     beg = p_curpos
@@ -252,6 +254,7 @@ local function scan()
                         next()
                     until p_chr ~= 0x30 and p_chr ~= 0x31
                     base = 2
+                    assert(p_curpos-beg <= 32)
                 end
             end
             if base == 10 then
