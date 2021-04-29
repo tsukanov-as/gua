@@ -127,6 +127,7 @@ local nodes = {
     ["return"] =   Fields{"Type", "Pos", "Len", "List"},
     ["break"] =    Fields{"Type", "Pos", "Len"},
     ["continue"] = Fields{"Type", "Pos", "Len"},
+    ["label"] =    Fields{"Type", "Pos", "Len", "Name"},
     ["func"] =     Fields{"Type", "Pos", "Len", "Name", "Params", "Body", "Receiver"},
     ["nop"] =      Fields{"Type", "Pos", "Len"},
     ["vararg"] =   Fields{"Type", "Pos", "Len"},
@@ -200,6 +201,8 @@ local p_vars = {}
 local p_scope = {}
 local p_level = 0
 local p_left -- cheatcode
+local p_continue = List{}
+local p_looplevel = 0
 -------------------------------------------------------------------------------
 
 local function next()
@@ -777,10 +780,11 @@ end
 
 local function parse_for()
     local pos = p_tokpos
+    p_looplevel = p_looplevel + 1
     skip("for")
     local id, call
     if p_tok == "{" then
-        local body = parse_body()
+        local body = parse_body(nil, true)
         return Node{"for", pos, p_endpos-pos, false, body}
     end
     if p_tok == "id" then
@@ -792,7 +796,7 @@ local function parse_for()
     local expr = assert(parse_expr())
     if expr ~= id or call or id[5] then
         assert(find_var(id[4]))
-        local body = parse_body()
+        local body = parse_body(nil, true)
         return Node{"for", pos, p_endpos-pos, expr, body}
     end
     assert(id)
@@ -807,7 +811,7 @@ local function parse_for()
             scan()
             by = parse_expr()
         end
-        local body = parse_body(vars)
+        local body = parse_body(vars, true)
         return Node{"for_to", pos, p_endpos-pos, id, from, to, by or false, body}
     end
     local ids = List{id}
@@ -831,7 +835,7 @@ local function parse_for()
         scan()
         ins[#ins+1] = parse_expr()
     end
-    local body = parse_body(vars)
+    local body = parse_body(vars, true)
     return Node{"for_in", pos, p_endpos-pos, ids, ins, body}
 end
 
@@ -863,6 +867,7 @@ local function parse_continue()
     local pos = p_tokpos
     skip("continue")
     expect("}")
+    p_continue[p_looplevel] = true
     return Node{"continue", pos, 8}
 end
 
@@ -952,7 +957,7 @@ local function parse_statement()
     return nil
 end
 
-parse_body = function(vars)
+parse_body = function(vars, loop)
     local pos = p_tokpos
     skip("{")
     open_scope(vars)
@@ -966,6 +971,11 @@ parse_body = function(vars)
     end
     close_scope()
     skip("}")
+    if loop and p_continue[p_looplevel] then
+        body[#body+1] = Node{"label", 0, 0, "continue"}
+        p_continue[p_looplevel] = false
+        p_looplevel = p_looplevel - 1
+    end
     return Node{"body", pos, p_endpos-pos, body}
 end
 
@@ -983,6 +993,8 @@ local function parse_module(src, vars)
     p_vars = {}
     p_level = 0
     p_scope = List{}
+    p_continue = List{}
+    p_looplevel = 0
     next()
     scan()
     open_scope(vars)
@@ -1324,7 +1336,11 @@ local function visit_break(node)
 end
 
 local function visit_continue(node)
-    v_res[#v_res+1] = space() .. "continue\n"
+    v_res[#v_res+1] = space() .. "goto continue\n"
+end
+
+local function visit_label(node)
+    v_res[#v_res+1] = space() .. "::" .. node[4] .. "::\n"
 end
 
 local function visit_params(node)
@@ -1383,10 +1399,13 @@ visit_stmt = function(node)
         visit_break(node)
     elseif t == "continue" then
         visit_continue(node)
+    elseif t == "label" then
+        visit_label(node)
     elseif t == "func" then
         visit_func(node)
     elseif t == "nop" then
         visit_nop(node)
+
     else
         errorf("unknown node type: %s", t)
     end

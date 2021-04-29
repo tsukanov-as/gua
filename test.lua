@@ -315,6 +315,38 @@ test "for_07"
     end
 ]]
 
+test "for_08"
+[[
+    for i := 1, 10 {
+        if i > 5 {
+            continue
+        }
+        print("i = ", i)
+        for j := 11, 20 {
+            if j > 15 {
+                continue
+            }
+            print("j = ", j)
+        }
+    }
+]]
+[[
+    for i = 1, 10 do
+        if i > 5 then
+            goto continue
+        end
+        print("i = ", i)
+        for j = 11, 20 do
+            if j > 15 then
+                goto continue
+            end
+            print("j = ", j)
+            ::continue::
+        end
+        ::continue::
+    end
+]]
+
 test "exp_01"
 [[
     x := 1 + 2 * 3 / 4 % 5
