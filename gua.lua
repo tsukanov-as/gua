@@ -129,6 +129,7 @@ local nodes = {
     ["continue"] = Fields{"Type", "Pos", "Len"},
     ["func"] =     Fields{"Type", "Pos", "Len", "Name", "Params", "Body", "Receiver"},
     ["nop"] =      Fields{"Type", "Pos", "Len"},
+    ["vararg"] =   Fields{"Type", "Pos", "Len"},
     ["param"] =    Fields{"Type", "Pos", "Len", "Name"},
     ["params"] =   Fields{"Type", "Pos", "Len", "List"}
 }
@@ -370,6 +371,10 @@ local function scan()
             if p_chr == 0x2E then
                 p_tok = ".."
                 next()
+                if p_chr == 0x2E then
+                    p_tok = "..."
+                    next()
+                end
             end
         else
             next()
@@ -577,6 +582,9 @@ local function parse_operand()
         node = parse_list()
     elseif p_tok == "func" then
         node = parse_func(true)
+    elseif p_tok == "..." then
+        node = Node{"vararg", p_tokpos, 3}
+        scan()
     else
         errorf("expected operand, found '%s'", p_tok)
     end
@@ -862,7 +870,17 @@ local function parse_params()
     local pos = p_tokpos
     skip("(")
     local list = List{}
-    while p_tok == "id" do
+    while true do
+        if p_tok == "..." then
+            local id = Node{"param", p_tokpos, 3, "..."}
+            list[#list+1] = id
+            p_vars["..."] = id
+            scan()
+            break
+        end
+        if p_tok ~= "id" then
+            break
+        end
         local id = Node{"param", p_tokpos, #p_lit, p_lit}
         list[#list+1] = id
         assert(p_vars[p_lit] == nil)
@@ -1147,6 +1165,8 @@ visit_expr = function(node)
         visit_list(node)
     elseif t == "func" then
         visit_func(node, true)
+    elseif t == "vararg" then
+        v_res[#v_res+1] = "..."
     else
         errorf("unknown node type: '%s'", t)
     end

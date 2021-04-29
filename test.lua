@@ -95,7 +95,7 @@ test "func_02"
     end
 ]]
 
-test "func_02"
+test "func_03"
 [[
     x := {
         field: 1
@@ -110,6 +110,18 @@ test "func_02"
     }
     function x:foo(p1, p2)
         self:bar(p2, p1)
+    end
+]]
+
+test "func_04"
+[[
+    func foo(p1, p2, ...) {
+        print(p2, p1, ...)
+    }
+]]
+[[
+    local function foo(p1, p2, ...)
+        print(p2, p1, ...)
     end
 ]]
 
