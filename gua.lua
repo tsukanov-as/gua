@@ -127,7 +127,7 @@ local nodes = {
     ["return"] =   Fields{"Type", "Pos", "Len", "List"},
     ["break"] =    Fields{"Type", "Pos", "Len"},
     ["continue"] = Fields{"Type", "Pos", "Len"},
-    ["func"] =     Fields{"Type", "Pos", "Len", "Name", "Params", "Body"},
+    ["func"] =     Fields{"Type", "Pos", "Len", "Name", "Params", "Body", "Receiver"},
     ["nop"] =      Fields{"Type", "Pos", "Len"},
     ["param"] =    Fields{"Type", "Pos", "Len", "Name"},
     ["params"] =   Fields{"Type", "Pos", "Len", "List"}
@@ -195,7 +195,7 @@ local p_tok = nil
 local p_lit = ''
 local p_val = nil
 local p_comments = List{}
-local p_vars = List{}
+local p_vars = {}
 local p_scope = {}
 local p_level = 0
 local p_left -- cheatcode
@@ -390,7 +390,7 @@ local function skip(t)
 end
 
 local function open_scope(vars)
-    p_vars = vars or List{}
+    p_vars = vars or {}
     p_level = p_level + 1
     p_scope[p_level] = p_vars
 end
@@ -788,7 +788,7 @@ local function parse_for()
         return Node{"for", pos, p_endpos-pos, expr, body}
     end
     assert(id)
-    local vars = List{[id[4]] = id}
+    local vars = {[id[4]] = id}
     if p_tok == ":=" then
         scan()
         local from = parse_expr()
@@ -865,6 +865,7 @@ local function parse_params()
     while p_tok == "id" do
         local id = Node{"param", p_tokpos, #p_lit, p_lit}
         list[#list+1] = id
+        assert(p_vars[p_lit] == nil)
         p_vars[p_lit] = id
         scan()
         if p_tok ~= "," then
@@ -879,18 +880,30 @@ end
 parse_func = function(lambda)
     local pos = p_tokpos
     local name = false
+    local receiver = false
+    local vars
     skip("func")
     if not lambda then
         expect("id")
         name = p_lit
-        assert(not find_var(name))
         scan()
+        if p_tok == "." then
+            scan()
+            expect("id")
+            assert(find_var(name))
+            receiver = name
+            name = p_lit
+            scan()
+            vars = {["self"] = Node{"id", 0, 0, "self", false, false}}
+        else
+            assert(not find_var(name))
+        end
     end
-    open_scope()
+    open_scope(vars)
     local params = parse_params()
     local body = parse_body()
     close_scope()
-    local node = Node{"func", pos, p_endpos-pos, name, params, body}
+    local node = Node{"func", pos, p_endpos-pos, name, params, body, receiver}
     if not lambda then
         p_vars[name] = node
     end
@@ -949,7 +962,7 @@ local function parse_module(src, vars)
     p_lit = ''
     p_val = nil
     p_comments = List{}
-    p_vars = List{}
+    p_vars = {}
     p_level = 0
     p_scope = List{}
     next()
@@ -1305,6 +1318,8 @@ end
 visit_func = function(node, lambda)
     if lambda then
         v_res[#v_res+1] = "function"
+    elseif node[7] then
+        v_res[#v_res+1] = space() .. "function " .. node[7] .. ":" .. node[4]
     else
         v_res[#v_res+1] = space() .. "local function " .. node[4]
     end

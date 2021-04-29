@@ -95,6 +95,24 @@ test "func_02"
     end
 ]]
 
+test "func_02"
+[[
+    x := {
+        field: 1
+    }
+    func x.foo(p1, p2) {
+        self.bar(p2, p1)
+    }
+]]
+[[
+    local x = {
+        field = 1;
+    }
+    function x:foo(p1, p2)
+        self:bar(p2, p1)
+    end
+]]
+
 test "return_01"
 [[
     func foo(p) {
