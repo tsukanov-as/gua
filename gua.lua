@@ -1101,7 +1101,10 @@ local function visit_paren(node)
 end
 
 local function visit_unop(node)
-    v_res[#v_res+1] = LUA_OPS[node[4]]
+    local op = LUA_OPS[node[4]]
+    if op ~= "+" then
+        v_res[#v_res+1] = LUA_OPS[node[4]]
+    end
     visit_expr(node[5])
 end
 

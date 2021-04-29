@@ -505,6 +505,16 @@ test "exp_16"
     local x = 39
 ]]
 
+test "exp_17"
+[[
+    x := -1
+    x := +1
+]]
+[[
+    local x = -1
+    local x = 1
+]]
+
 test "inc_01"
 [[
     x := 0
