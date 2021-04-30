@@ -575,6 +575,37 @@ test "exp_17"
     local x = 1
 ]]
 
+test "exp_18"
+[[
+    func foo(s) {
+        print(s)
+    }
+    x := foo "hello"
+]]
+[[
+    local function foo(s)
+        print(s)
+    end
+    local x = foo("hello")
+]]
+
+test "exp_19"
+[[
+    y := {}
+    func y.foo(s) {
+        print(s)
+    }
+    x := y.foo "hello"
+]]
+[[
+    local y = {
+    }
+    function y:foo(s)
+        print(s)
+    end
+    local x = y:foo("hello")
+]]
+
 test "inc_01"
 [[
     x := 0

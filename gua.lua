@@ -454,6 +454,7 @@ local function parse_tail(call)
             elseif p_tok == "str" then
                 args = List{Node{"value", p_tokpos, p_endpos-pos, p_val}}
                 last = p_tokpos
+                scan()
                 call = true
             else
                 call = false
@@ -499,6 +500,7 @@ local function parse_id(check)
         call = true
     elseif p_tok == "str" then
         args = List{Node{"value", p_tokpos, p_endpos-pos, p_val}}
+        scan()
         call = true
     end
     tail, call = parse_tail(call)
