@@ -546,26 +546,21 @@ parse_table = function()
     local list = List{}
     scan() -- skip "{" or ".{"
     while p_tok ~= "}" do
+        local key_pos = p_tokpos
+        local left
         if p_tok == "id" then
-            local id = parse_id(false)
-            -- cheatcode
-            p_left = id
-            p_tokpos = id[2]
+            left = Node{"id", key_pos, #p_lit, p_lit, false, false}
+            scan()
+        elseif p_tok == "[" then
+            scan()
+            local expr = assert(parse_expr())
+            skip("]")
+            left = Node{"index", key_pos, p_endpos-key_pos, expr}
+        else
+            left = assert(parse_expr())
         end
-        local left = assert(parse_expr())
         expect(":")
-        local line = p_line
         scan()
-        if left[1] == "id" then
-            if left[5] or left[6] then
-                errorf("key expression must be enclosed in square brackets at line: ", line)
-            end
-        elseif left[1] == "list" then
-            if #left[4] ~= 1 then
-                errorf("wrong key at line: ", line)
-            end
-            left = Node{"index", pos, p_endpos-pos, left[4][1]}
-        end
         local right = assert(parse_expr())
         list[#list+1] = Node{"pair", pos, p_endpos-pos, left, right}
         if p_tok ~= "," then
