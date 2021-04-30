@@ -378,18 +378,16 @@ test "exp_03"
 test "exp_04"
 [[
     a := {
-        one: 1;
-        tow: 2;
-        3,
-        4,
+        one: 1,
+        tow: 2,
+        list: [1, 2, 3],
     }
 ]]
 [[
     local a = {
         one = 1;
         tow = 2;
-        3,
-        4,
+        list = {1, 2, 3};
     }
 ]]
 
@@ -532,15 +530,15 @@ test "exp_15"
 test "exp_15"
 [=[
     x := {
-        name1: 1;
-        "name2": 2;
-        3: 4;
-        true: 5;
-        [next]: 6;
-        [next()]: 7;
-        [mock.field]: 8;
-        [mock.field()]: 9;
-        [[mock.field(1, 2)]]: 10;
+        name1: 1,
+        "name2": 2,
+        3: 4,
+        true: 5,
+        [next]: 6,
+        [next()]: 7,
+        [mock.field]: 8,
+        [mock.field()]: 9,
+        [[mock.field(1, 2)]]: 10,
     }
 ]=]
 [[

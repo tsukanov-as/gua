@@ -526,25 +526,22 @@ local function parse_table()
             p_tokpos = id[2]
         end
         local left = assert(parse_expr())
-        if p_tok == ":" then
-            local line = p_line
-            scan()
-            if left[1] == "id" then
-                if left[5] or left[6] then
-                    errorf("unexpected ':' at line: ", line)
-                end
-            elseif left[1] == "list" then
-                if #left[4] ~= 1 then
-                    errorf("wrong key at line: ", line)
-                end
-                left = Node{"index", pos, p_endpos-pos, left[4][1]}
+        expect(":")
+        local line = p_line
+        scan()
+        if left[1] == "id" then
+            if left[5] or left[6] then
+                errorf("key expression must be enclosed in square brackets at line: ", line)
             end
-            local right = assert(parse_expr())
-            list[#list+1] = Node{"pair", pos, p_endpos-pos, left, right}
-        else
-            list[#list+1] = left
+        elseif left[1] == "list" then
+            if #left[4] ~= 1 then
+                errorf("wrong key at line: ", line)
+            end
+            left = Node{"index", pos, p_endpos-pos, left[4][1]}
         end
-        if p_tok ~= "," and p_tok ~= ";" then
+        local right = assert(parse_expr())
+        list[#list+1] = Node{"pair", pos, p_endpos-pos, left, right}
+        if p_tok ~= "," then
             break
         end
         scan()
