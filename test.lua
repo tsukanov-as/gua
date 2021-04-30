@@ -606,6 +606,40 @@ test "exp_19"
     local x = y:foo("hello")
 ]]
 
+test "exp_20"
+[[
+    func Struct(t) {
+        print(t)
+    }
+    x := Struct.{
+        one: 1,
+        two: 2,
+    }
+]]
+[[
+    local function Struct(t)
+        print(t)
+    end
+    local x = Struct({
+        one = 1;
+        two = 2;
+    })
+]]
+
+test "exp_21"
+[[
+    func List(t) {
+        print(t)
+    }
+    x := List.[1, 2, 3]
+]]
+[[
+    local function List(t)
+        print(t)
+    end
+    local x = List({1, 2, 3})
+]]
+
 test "inc_01"
 [[
     x := 0

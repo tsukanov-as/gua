@@ -378,6 +378,12 @@ local function scan()
                     p_tok = "..."
                     next()
                 end
+            elseif p_chr == 0x5B then
+                p_tok = ".["
+                next()
+            elseif p_chr == 0x7B then
+                p_tok = ".{"
+                next()
             end
         else
             next()
@@ -423,6 +429,7 @@ local function errorf(notef, ...)
 end
 
 local parse_expr
+local parse_table, parse_list
 
 local function parse_tail(call)
     local tail, i = List{}, 0
@@ -453,6 +460,16 @@ local function parse_tail(call)
                 call = true
             elseif p_tok == "str" then
                 args = List{Node{"value", p_tokpos, p_endpos-pos, p_val}}
+                last = p_tokpos
+                scan()
+                call = true
+            elseif p_tok == ".{" then
+                args = List{assert(parse_table())}
+                last = p_tokpos
+                scan()
+                call = true
+            elseif p_tok == ".[" then
+                args = List{assert(parse_list())}
                 last = p_tokpos
                 scan()
                 call = true
@@ -502,6 +519,14 @@ local function parse_id(check)
         args = List{Node{"value", p_tokpos, p_endpos-pos, p_val}}
         scan()
         call = true
+    elseif p_tok == ".{" then
+        args = List{assert(parse_table())}
+        scan()
+        call = true
+    elseif p_tok == ".[" then
+        args = List{assert(parse_list())}
+        scan()
+        call = true
     end
     tail, call = parse_tail(call)
     local node = Node{"id", pos, p_endpos-pos, name, tail, args}
@@ -516,10 +541,10 @@ local function parse_paren()
     return Node{"paren", pos, p_endpos-pos, expr}
 end
 
-local function parse_table()
+parse_table = function()
     local pos = p_tokpos
     local list = List{}
-    skip("{")
+    scan() -- skip "{" or ".{"
     while p_tok ~= "}" do
         if p_tok == "id" then
             local id = parse_id(false)
@@ -552,10 +577,10 @@ local function parse_table()
     return Node{"table", pos, p_endpos-pos, list}
 end
 
-local function parse_list()
+parse_list = function()
     local pos = p_tokpos
     local list = List{}
-    skip("[")
+    scan() -- skip "[" or ".["
     while p_tok ~= "]" do
         list[#list+1] = assert(parse_expr())
         if p_tok ~= "," then
