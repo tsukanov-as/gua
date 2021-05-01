@@ -36,6 +36,7 @@ local ipairs = _G.ipairs
 local tostring = _G.tostring
 local error = _G.error
 local type = _G.type
+local print = _G.print
 
 local Type = {
     __call = function(self, t)
@@ -200,7 +201,8 @@ local p_comments = List{}
 local p_vars = {}
 local p_scope = {}
 local p_level = 0
-local p_left -- cheatcode
+local p_skip_id_check = false
+local p_skipped_id_name
 local p_continue = List{}
 local p_looplevel = 0
 -------------------------------------------------------------------------------
@@ -394,7 +396,13 @@ end
 
 local function expect(t, l)
     if p_tok ~= t then
-        error("expected " .. tostring(t) .. ", found " .. tostring(p_tok), l or 2)
+        local str
+        if p_tok == "num" or p_tok == "str" or p_tok == "chr" then
+            str = p_lit
+        else
+            str = tostring(p_tok)
+        end
+        error(string_format("expected '%s', found '%s' in line %d", tostring(t), str, p_line), l or 2)
     end
 end
 
@@ -425,7 +433,14 @@ local function find_var(name)
 end
 
 local function errorf(notef, ...)
-    error(string_format(notef, ...) .. " at line: " .. p_line, 2)
+    error(string_format(notef, ...) .. " in line " .. p_line, 2)
+end
+
+local function assertf(expr, notef, ...)
+    if not expr then
+        error(string_format(notef, ...) .. " in line " .. p_line, 2)
+    end
+    return expr
 end
 
 local parse_expr
@@ -449,7 +464,7 @@ local function parse_tail(call)
                 scan()
                 args = List{}
                 while p_tok ~= ")" do
-                    args[#args+1] = assert(parse_expr())
+                    args[#args+1] = parse_expr()
                     if p_tok ~= "," then
                         break
                     end
@@ -464,12 +479,12 @@ local function parse_tail(call)
                 scan()
                 call = true
             elseif p_tok == ".{" then
-                args = List{assert(parse_table())}
+                args = List{parse_table()}
                 last = p_tokpos
                 scan()
                 call = true
             elseif p_tok == ".[" then
-                args = List{assert(parse_list())}
+                args = List{parse_list()}
                 last = p_tokpos
                 scan()
                 call = true
@@ -480,10 +495,9 @@ local function parse_tail(call)
             i = i + 1
             tail[i] = item
         elseif p_tok == "[" then
-            if scan() == "]" then
-                errorf("expected expression, found '%s'", p_tok)
-            end
-            local expr = assert(parse_expr())
+            scan()
+            assertf(p_tok ~= "]", "expected expression, found ']'")
+            local expr = parse_expr()
             skip("]")
             i = i + 1
             tail[i] = Node{"index", pos, p_endpos-pos, expr}
@@ -494,11 +508,14 @@ local function parse_tail(call)
     return i > 0 and tail, call
 end
 
-local function parse_id(check)
+local function parse_id()
     local pos = p_tokpos
     local name = p_lit
-    if check then
-        assert(find_var(name))
+    if p_skip_id_check then
+        p_skipped_id_name = name
+        p_skip_id_check = false
+    else
+        assertf(find_var(name), "undeclared variable '%s'", name)
     end
     local call = false
     local args, tail = false, false
@@ -507,7 +524,7 @@ local function parse_id(check)
         scan()
         args = List{}
         while p_tok ~= ")" do
-            args[#args+1] = assert(parse_expr())
+            args[#args+1] = parse_expr()
             if p_tok ~= "," then
                 break
             end
@@ -520,11 +537,11 @@ local function parse_id(check)
         scan()
         call = true
     elseif p_tok == ".{" then
-        args = List{assert(parse_table())}
+        args = List{parse_table()}
         scan()
         call = true
     elseif p_tok == ".[" then
-        args = List{assert(parse_list())}
+        args = List{parse_list()}
         scan()
         call = true
     end
@@ -536,7 +553,7 @@ end
 local function parse_paren()
     local pos = p_tokpos
     skip("(")
-    local expr = assert(parse_expr())
+    local expr = parse_expr()
     skip(")")
     return Node{"paren", pos, p_endpos-pos, expr}
 end
@@ -553,15 +570,15 @@ parse_table = function()
             scan()
         elseif p_tok == "[" then
             scan()
-            local expr = assert(parse_expr())
+            local expr = parse_expr()
             skip("]")
             left = Node{"index", key_pos, p_endpos-key_pos, expr}
         else
-            left = assert(parse_expr())
+            left = parse_expr()
         end
         expect(":")
         scan()
-        local right = assert(parse_expr())
+        local right = parse_expr()
         list[#list+1] = Node{"pair", pos, p_endpos-pos, left, right}
         if p_tok ~= "," then
             break
@@ -577,7 +594,7 @@ parse_list = function()
     local list = List{}
     scan() -- skip "[" or ".["
     while p_tok ~= "]" do
-        list[#list+1] = assert(parse_expr())
+        list[#list+1] = parse_expr()
         if p_tok ~= "," then
             break
         end
@@ -595,7 +612,7 @@ local function parse_operand()
         node = Node{"value", p_tokpos, #p_lit, p_val}
         scan()
     elseif p_tok == "id" then
-        node = parse_id(true)
+        node = parse_id()
     elseif p_tok == "(" then
         node = parse_paren()
     elseif p_tok == "{" then
@@ -615,14 +632,7 @@ end
 
 local function parse_pow()
     local pos = p_tokpos
-    local left = p_left
-    if left then
-        -- cheatcode
-        p_left = nil
-        pos = left[2]
-    else
-        left = parse_operand()
-    end
+    local left = parse_operand()
     while p_tok == "^" do
         scan()
         local right = parse_operand()
@@ -721,59 +731,67 @@ local parse_body
 local function parse_set_or_call()
     local pos = p_tokpos
     local name = p_lit
-    local id, call = parse_id(false)
+    p_skip_id_check = true
+    local id, call = parse_id()
     if call then
-        assert(find_var(name))
+        assertf(find_var(name), "undeclared variable '%s'", name)
         return Node{"call", pos, p_endpos-pos, id}
     end
     if p_tok == "+=" then
-        assert(find_var(name))
+        assertf(find_var(name), "undeclared variable '%s'", name)
         scan()
-        local expr = assert(parse_add())
+        local expr = parse_add()
         return Node{"inc", pos, p_endpos-pos, id, expr}
     end
     if p_tok == "-=" then
-        assert(find_var(name))
+        assertf(find_var(name), "undeclared variable '%s'", name)
         scan()
-        local expr = assert(parse_add())
+        local expr = parse_add()
         return Node{"dec", pos, p_endpos-pos, id, expr}
     end
     local left = List{id}
     while p_tok == "," do
         scan()
         expect("id")
-        id = Node{"id", p_tokpos, #p_lit, p_lit, false, false}
+        p_skip_id_check = true
+        id, call = parse_id()
+        assertf(not call, "unexpected call")
         left[#left+1] = id
-        scan()
     end
     if p_tok == "=" then
         for _, id in ipairs(left) do
-            assert(find_var(id[4]))
+            name = id[4]
+            assertf(find_var(name), "undeclared variable '%s'", name)
         end
         scan()
         local right = List{}
         while true do
-            right[#right+1] = assert(parse_expr())
+            right[#right+1] = parse_expr()
             if p_tok ~= "," then
                 break
             end
             scan()
         end
         return Node{"set", pos, p_endpos-pos, left, right}
-    elseif p_tok == ":=" then
+    end
+    if p_tok == ":=" then
         local allow = false
         for _, id in ipairs(left) do
+            assertf(not id[5], "unexpected tail")
+            assertf(not id[6], "unexpected call")
+            assertf(not id[7], "unexpected self")
             local var, level = find_var(id[4])
-            assert(not var or level == p_level)
             if not var then
                 allow = true
+            elseif level ~= p_level then
+                errorf("variable shadowing is prohibited, you need to change the name '%s'", p_skipped_id_name)
             end
         end
-        assert(allow, "no new variables on left side of :=")
+        assertf(allow, "no new variables on left side of ':='")
         scan()
         local right = List{}
         while true do
-            right[#right+1] = assert(parse_expr())
+            right[#right+1] = parse_expr()
             if p_tok ~= "," then
                 break
             end
@@ -808,26 +826,20 @@ local function parse_for()
     local pos = p_tokpos
     p_looplevel = p_looplevel + 1
     skip("for")
-    local id, call
     if p_tok == "{" then
         local body = parse_body(nil, true)
         return Node{"for", pos, p_endpos-pos, false, body}
     end
-    if p_tok == "id" then
-        id, call = parse_id(false)
-        -- cheatcode
-        p_left = id
-        p_tokpos = id[2]
-    end
-    local expr = assert(parse_expr())
-    if expr ~= id or call or id[5] then
-        assert(find_var(id[4]))
+    p_skip_id_check = true
+    local expr = parse_expr()
+    if expr[1] ~= "id" or expr[5] or expr[6] then
+        assertf(find_var(p_skipped_id_name), "undeclared variable '%s'", p_skipped_id_name)
         local body = parse_body(nil, true)
         return Node{"for", pos, p_endpos-pos, expr, body}
     end
-    assert(id)
-    local vars = {[id[4]] = id}
+    local vars = {[expr[4]] = expr}
     if p_tok == ":=" then
+        assertf(not find_var(p_skipped_id_name), "variable shadowing is prohibited, you need to change the name '%s'", p_skipped_id_name)
         scan()
         local from = parse_expr()
         skip(",")
@@ -838,15 +850,19 @@ local function parse_for()
             by = parse_expr()
         end
         local body = parse_body(vars, true)
-        return Node{"for_to", pos, p_endpos-pos, id, from, to, by or false, body}
+        return Node{"for_to", pos, p_endpos-pos, expr, from, to, by or false, body}
     end
-    local ids = List{id}
+    assertf(not find_var(expr[4]), "variable shadowing is prohibited, you need to change the name '%s'", expr[4])
+    local ids = List{expr}
     while p_tok == "," do
         scan()
         expect("id")
-        id = Node{"id", p_tokpos, #p_lit, p_lit, false, false}
+        local name = p_lit
+        assertf(not find_var(name), "variable shadowing is prohibited, you need to change the name '%s'", name)
+        local id = Node{"id", p_tokpos, #name, name, false, false}
         ids[#ids+1] = id
-        vars[p_lit] = id
+        assertf(vars[name] == nil, "re-declaring variable '%s'", name)
+        vars[name] = id
         scan()
     end
     expect("in")
@@ -914,7 +930,7 @@ local function parse_params()
         end
         local id = Node{"param", p_tokpos, #p_lit, p_lit}
         list[#list+1] = id
-        assert(p_vars[p_lit] == nil)
+        assertf(p_vars[p_lit] == nil, "parameter '%s' is already declared", p_lit)
         p_vars[p_lit] = id
         scan()
         if p_tok ~= "," then
@@ -939,13 +955,13 @@ parse_func = function(lambda)
         if p_tok == "." then
             scan()
             expect("id")
-            assert(find_var(name))
+            assertf(find_var(name), "undeclared variable '%s'", name)
             receiver = name
             name = p_lit
             scan()
             vars = {["self"] = Node{"id", 0, 0, "self", false, false}}
         else
-            assert(not find_var(name))
+            assertf(not find_var(name), "re-declaring variable '%s'", name)
         end
     end
     open_scope(vars)
@@ -1431,7 +1447,6 @@ visit_stmt = function(node)
         visit_func(node)
     elseif t == "nop" then
         visit_nop(node)
-
     else
         errorf("unknown node type: %s", t)
     end
