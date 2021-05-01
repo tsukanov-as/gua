@@ -661,9 +661,10 @@ test "exp_23"
         [mock.field()]: 9,
         [[mock.field(1, 2)]]: 10,
         'A': 11,
+        `raw`: 12,
     }
 ]=]
-[[
+[=[
     local x = {
         name1 = 1;
         ["name2"] = 2;
@@ -675,8 +676,9 @@ test "exp_23"
         [mock:field()] = 9;
         [{mock:field(1, 2)}] = 10;
         [0x41] = 11;
+        [ [[raw]]] = 12;
     }
-]]
+]=]
 
 test "exp_24"
 [=[
@@ -742,6 +744,22 @@ test "exp_26"
     end
     local x = y:foo(0x42)
 ]]
+
+test "exp_27"
+[[
+    x := `a[=[aa[[aa`
+    y := `a[==[aa[[aa`
+    z := `
+    abc
+`
+]]
+[===[
+    local x =  [==[a[=[aa[[aa]==]
+    local y =  [=[a[==[aa[[aa]=]
+    local z =  [[
+    abc
+]]
+]===]
 
 test "inc_01"
 [[

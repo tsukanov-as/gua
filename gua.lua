@@ -26,6 +26,7 @@ local string_byte = _G.string.byte
 local string_sub = _G.string.sub
 local string_rep = _G.string.rep
 local string_format = _G.string.format
+local string_find = _G.string.find
 local table_concat = _G.table.concat
 local table_sort = _G.table.sort
 local tonumber = _G.tonumber
@@ -36,7 +37,6 @@ local ipairs = _G.ipairs
 local tostring = _G.tostring
 local error = _G.error
 local type = _G.type
-local print = _G.print
 
 local Type = {
     __call = function(self, t)
@@ -51,6 +51,23 @@ setmetatable(Type, Type)
 local Hex = Type{
     __tostring = function(t)
         return string_format("0x%X", t[1])
+    end;
+}
+
+local Raw = Type{
+    __tostring = function(t)
+        local s = t[1]
+        local i = 0
+        local x
+        while true do
+            x = string_rep("=", i)
+            if not string_find(s, "[" .. x .. "[", 1, true)
+                and not string_find(s, "]" .. x .. "]", 1, true) then
+                break
+            end
+            i = i + 1
+        end
+        return string_format(" [%s[%s]%s]", x, s, x)
     end;
 }
 
@@ -160,7 +177,7 @@ local Node = Type{
 
 local KEYWORDS = Set{"break", "continue", "else", "false", "for", "func", "if", "in", "nil", "return", "true", "switch", "case", "default"}
 local RESERVED = Set{"local", "function", "while", "do", "end", "repeat", "until", "and", "or", "not", "then", "elseif"}
-local LITERALS = Set{"str", "chr", "num", "true", "false", "nil"}
+local LITERALS = Set{"str", "chr", "raw", "num", "true", "false", "nil"}
 local REL_OPS = Set{"==", "!=", "<", ">", "<=", ">="}
 local MUL_OPS = Set{"*", "/", "%"}
 local ADD_OPS = Set{"+", "-"}
@@ -171,7 +188,7 @@ local ALPHA = 1
 local DIGIT = 2
 local SPACE = 3
 
-local MAP = {[string_byte'"'] = "str", [string_byte"'"] = "chr"}
+local MAP = {[string_byte'"'] = "str", [string_byte"'"] = "chr", [string_byte"`"] = "raw"}
 local HEX = {}
 do
     local sym = "()[]{}*:;.,/+-=<>#%|&!^"
@@ -311,6 +328,15 @@ local function scan()
             assert(p_chr == 0x22, 'expected " at pos: ' .. p_curpos)
             p_lit = string_sub(p_src, beg+1, p_curpos-1)
             p_val = p_lit
+            next()
+        elseif p_tok == "raw" then
+            local beg = p_curpos
+            repeat
+                next()
+            until p_chr == 0x60 or p_chr == nil
+            assert(p_chr == 0x60, 'expected ` at pos: ' .. p_curpos)
+            p_lit = string_sub(p_src, beg+1, p_curpos-1)
+            p_val = Raw{p_lit}
             next()
         elseif p_tok == "chr" then
             local beg = p_curpos
