@@ -397,7 +397,7 @@ end
 local function expect(t, l)
     if p_tok ~= t then
         local str
-        if p_tok == "num" or p_tok == "str" or p_tok == "chr" then
+        if p_tok == "num" or p_tok == "str" or p_tok == "chr" or p_tok == "id" then
             str = p_lit
         else
             str = tostring(p_tok)
