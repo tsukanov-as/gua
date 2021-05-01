@@ -773,4 +773,14 @@ test "do_01"
     end
 ]]
 
+test "return_01"
+[[
+    x := 1
+    return x
+]]
+[[
+    local x = 1
+    return x
+]]
+
 print("OK.", os.clock())

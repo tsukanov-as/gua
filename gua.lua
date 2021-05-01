@@ -951,7 +951,9 @@ local function parse_return()
             scan()
         end
     end
-    expect("}")
+    if p_tok then
+        expect("}")
+    end
     return Node{"return", pos, p_endpos-pos, list}
 end
 
