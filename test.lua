@@ -9,7 +9,9 @@ local function test(name)
     }
     return function(src)
         local r, m = pcall(gua.parse_module, src, vars)
-        assert(r, m)
+        if not r then
+            error("failed: " .. name .. "\nerror: " .. m)
+        end
         return function(want)
             local res = gua.visit_module(m, 1)
             if res ~= want then
@@ -405,14 +407,14 @@ test "exp_06"
     a.push(1)
     a.push = nil
     x := a.push(1)
-    x := a.push
+    y := a.push
 ]]
 [[
     local a = {}
     a:push(1)
     a.push = nil
     local x = a:push(1)
-    local x = a.push
+    local y = a.push
 ]]
 
 test "exp_07"
@@ -421,14 +423,14 @@ test "exp_07"
     a::push(1)
     a::push = nil
     x := a::push(1)
-    x := a::push
+    y := a::push
 ]]
 [[
     local a = {}
     a.push(1)
     a.push = nil
     local x = a.push(1)
-    local x = a.push
+    local y = a.push
 ]]
 
 test "exp_08"
@@ -475,42 +477,42 @@ test "exp_12"
 
 test "exp_13"
 [[
-    x := 1e3
-    x := 1e-3
-    x := 1.e3
-    x := 1.e-3
-    x := 1.2e3
-    x := 1.2e-3
+    x1 := 1e3
+    x2 := 1e-3
+    x3 := 1.e3
+    x4 := 1.e-3
+    x5 := 1.2e3
+    x6 := 1.2e-3
 ]]
 [[
-    local x = 1000
-    local x = 0.001
-    local x = 1000
-    local x = 0.001
-    local x = 1200
-    local x = 0.0012
+    local x1 = 1000
+    local x2 = 0.001
+    local x3 = 1000
+    local x4 = 0.001
+    local x5 = 1200
+    local x6 = 0.0012
 ]]
 
 test "exp_14"
 [[
-    x := 0xAF
-    x := 0x1F
-    x := 0XABCDEF
-    x := 0Xabcdef
-    x := 0X23456789
-    x := 0XFFFFFFFF
-    x := 0b0001
-    x := 0b0011
+    x1 := 0xAF
+    x2 := 0x1F
+    x3 := 0XABCDEF
+    x4 := 0Xabcdef
+    x5 := 0X23456789
+    x6 := 0XFFFFFFFF
+    x7 := 0b0001
+    x8 := 0b0011
 ]]
 [[
-    local x = 175
-    local x = 31
-    local x = 11259375
-    local x = 11259375
-    local x = 591751049
-    local x = 4294967295
-    local x = 1
-    local x = 3
+    local x1 = 175
+    local x2 = 31
+    local x3 = 11259375
+    local x4 = 11259375
+    local x5 = 591751049
+    local x6 = 4294967295
+    local x7 = 1
+    local x8 = 3
 ]]
 
 test "exp_15"
@@ -558,21 +560,21 @@ test "exp_15"
 test "exp_16"
 [[
     x := 'A'
-    x := '''
+    y := '''
 ]]
 [[
     local x = 65
-    local x = 39
+    local y = 39
 ]]
 
 test "exp_17"
 [[
     x := -1
-    x := +1
+    y := +1
 ]]
 [[
     local x = -1
-    local x = 1
+    local y = 1
 ]]
 
 test "exp_18"
@@ -638,6 +640,16 @@ test "exp_21"
         print(t)
     end
     local x = List({1, 2, 3})
+]]
+
+test "exp_22"
+[[
+    x := 1
+    x, y := 1, 2
+]]
+[[
+    local x = 1
+    local x, y = 1, 2
 ]]
 
 test "inc_01"

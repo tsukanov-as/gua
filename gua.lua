@@ -761,8 +761,15 @@ local function parse_set_or_call()
         end
         return Node{"set", pos, p_endpos-pos, left, right}
     elseif p_tok == ":=" then
-        local var, level = find_var(name)
-        assert(not var or level == p_level)
+        local allow = false
+        for _, id in ipairs(left) do
+            local var, level = find_var(id[4])
+            assert(not var or level == p_level)
+            if not var then
+                allow = true
+            end
+        end
+        assert(allow, "no new variables on left side of :=")
         scan()
         local right = List{}
         while true do
