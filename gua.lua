@@ -131,7 +131,7 @@ local nodes = {
     ["value"   ] = Fields{"Type", "Pos", "Len", "Value"},
     ["field"   ] = Fields{"Type", "Pos", "Len", "Args", "Name", "Dot"},
     ["index"   ] = Fields{"Type", "Pos", "Len", "Expr"},
-    ["id"      ] = Fields{"Type", "Pos", "Len", "Name", "Tail", "Args"},
+    ["id"      ] = Fields{"Type", "Pos", "Len", "Name", "Tail", "Args", "Const"},
     ["table"   ] = Fields{"Type", "Pos", "Len", "List"},
     ["pair"    ] = Fields{"Type", "Pos", "Len", "Left", "Right"},
     ["list"    ] = Fields{"Type", "Pos", "Len", "List"},
@@ -159,6 +159,7 @@ local nodes = {
     ["params"  ] = Fields{"Type", "Pos", "Len", "List"},
     ["switch"  ] = Fields{"Type", "Pos", "Len", "Expr", "Cases", "Default"},
     ["case"    ] = Fields{"Type", "Pos", "Len", "List", "Expr", "Body"},
+    ["const"   ] = Fields{"Type", "Pos", "Len", "List"},
 }
 
 local Node = Type{
@@ -175,7 +176,7 @@ local Node = Type{
     end;
 }
 
-local KEYWORDS = Set{"break", "continue", "else", "false", "for", "func", "if", "in", "nil", "return", "true", "switch", "case", "default"}
+local KEYWORDS = Set{"break", "continue", "else", "false", "for", "func", "if", "in", "nil", "return", "true", "switch", "case", "default", "const"}
 local RESERVED = Set{"local", "function", "while", "do", "end", "repeat", "until", "and", "or", "not", "then", "elseif"}
 local LITERALS = Set{"str", "chr", "raw", "num", "true", "false", "nil"}
 local REL_OPS = Set{"==", "!=", "<", ">", "<=", ">="}
@@ -554,43 +555,47 @@ end
 local function parse_id()
     local pos = p_tokpos
     local name = p_lit
+    local const
     assertf(not RESERVED[name], "name '%s' is reserved", name)
     if p_skip_id_check then
         p_skipped_id_name = name
         p_skip_id_check = false
     else
-        assertf(find_var(name), "undeclared variable '%s'", name)
+        local id = assertf(find_var(name), "undeclared variable '%s'", name)
+        const = id[7]
     end
     local call = false
     local args, tail = false, false
     scan()
-    if p_tok == "(" then
-        scan()
-        args = List{}
-        while p_tok ~= ")" do
-            args[#args+1] = parse_expr()
-            if p_tok ~= "," then
-                break
-            end
+    if not const then
+        if p_tok == "(" then
             scan()
+            args = List{}
+            while p_tok ~= ")" do
+                args[#args+1] = parse_expr()
+                if p_tok ~= "," then
+                    break
+                end
+                scan()
+            end
+            skip(")")
+            call = true
+        elseif p_tok == "str" or p_tok == "chr" then
+            args = List{Node{"value", p_tokpos, p_endpos-pos, p_val}}
+            scan()
+            call = true
+        elseif p_tok == ".{" then
+            args = List{parse_table()}
+            scan()
+            call = true
+        elseif p_tok == ".[" then
+            args = List{parse_list()}
+            scan()
+            call = true
         end
-        skip(")")
-        call = true
-    elseif p_tok == "str" or p_tok == "chr" then
-        args = List{Node{"value", p_tokpos, p_endpos-pos, p_val}}
-        scan()
-        call = true
-    elseif p_tok == ".{" then
-        args = List{parse_table()}
-        scan()
-        call = true
-    elseif p_tok == ".[" then
-        args = List{parse_list()}
-        scan()
-        call = true
+        tail, call = parse_tail(call)
     end
-    tail, call = parse_tail(call)
-    local node = Node{"id", pos, p_endpos-pos, name, tail, args}
+    local node = Node{"id", pos, p_endpos-pos, name, tail, args, const}
     return node, call
 end
 
@@ -805,7 +810,8 @@ local function parse_set_or_call()
     if p_tok == "=" then
         for _, id in ipairs(left) do
             name = id[4]
-            assertf(find_var(name), "undeclared variable '%s'", name)
+            local v = assertf(find_var(name), "undeclared variable '%s'", name)
+            assertf(not v[7], "cannot assign to '%s' (declared const)", name)
         end
         scan()
         local right = List{}
@@ -827,7 +833,7 @@ local function parse_set_or_call()
             local var, level = find_var(id[4])
             if not var then
                 allow = true
-            elseif level ~= p_level then
+            elseif level ~= p_level or var[7] then
                 errorf("variable shadowing is prohibited, you need to change the name '%s'", p_skipped_id_name)
             end
         end
@@ -1008,6 +1014,45 @@ local function parse_continue()
     return Node{"continue", pos, 8}
 end
 
+local function parse_const()
+    local pos = p_tokpos
+    skip("const")
+    if p_tok == "id" then
+        local name = p_lit
+        assertf(not RESERVED[name], "name '%s' is reserved", name)
+        assertf(not find_var(name), "variable shadowing is prohibited, you need to change the name '%s'", name)
+        local id = Node{"id", p_tokpos, #name, name, false, false, nil}
+        local list = List{id}
+        scan()
+        skip("=")
+        assertf(LITERALS[p_tok], "expected value")
+        id[7] = Node{"value", p_tokpos, #p_lit, p_val}
+        p_vars[name] = id
+        scan()
+        return Node{"const", pos, p_endpos-pos, list}
+    end
+    if p_tok == "(" then
+        scan()
+        local list = List{}
+        while p_tok == "id" do
+            local name = p_lit
+            assertf(not RESERVED[name], "name '%s' is reserved", name)
+            assertf(not find_var(name), "variable shadowing is prohibited, you need to change the name '%s'", name)
+            local id = Node{"id", p_tokpos, #name, name, false, false, nil}
+            list[#list+1] = id
+            scan()
+            skip("=")
+            assertf(LITERALS[p_tok], "expected value")
+            id[7] = Node{"value", p_tokpos, #p_lit, p_val}
+            p_vars[name] = id
+            scan()
+        end
+        skip(")")
+        return Node{"const", pos, p_endpos-pos, list}
+    end
+    expect("id")
+end
+
 local function parse_params()
     local pos = p_tokpos
     skip("(")
@@ -1098,6 +1143,8 @@ local function parse_statement()
         return parse_continue()
     elseif p_tok == "switch" then
         return parse_switch()
+    elseif p_tok == "const" then
+        return parse_const()
     elseif p_tok == ";" then
         scan()
         return Node{"nop", p_curpos, 1}
@@ -1153,7 +1200,9 @@ local function parse_module(src, vars)
     local pos = p_tokpos
     local body = parse_body(vars)
     local module = Node{"module", pos, p_endpos-pos, body, p_comments}
-    expect(nil)
+    if p_tok ~= nil then
+        errorf("unexpected '%s'", p_tok)
+    end
     return module
 end
 
@@ -1222,8 +1271,12 @@ local function visit_index(node)
 end
 
 local function visit_id(node)
+    local tail, args, const = node[5], node[6], node[7]
+    if const and const[1] == "value" then
+        visit_value(const)
+        return
+    end
     v_res[#v_res+1] = node[4]
-    local tail, args = node[5], node[6]
     if tail then
         for _, v in ipairs(tail) do
             if v[1] == "field" then
@@ -1643,6 +1696,8 @@ visit_stmt = function(node)
         visit_func(node)
     elseif t == "nop" then
         visit_nop(node)
+    elseif t == "const" then
+        -- skip
     else
         errorf("unknown node type: %s", t)
     end

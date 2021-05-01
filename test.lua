@@ -846,4 +846,21 @@ test "do_01"
     end
 ]]
 
+test "const_01"
+[[
+    const a = 1
+    const (
+        b = 3
+        c = 4
+    )
+    x := a
+    y := b
+    z := c
+]]
+[[
+    local x = 1
+    local y = 3
+    local z = 4
+]]
+
 print("OK.", os.clock())
