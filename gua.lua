@@ -318,7 +318,7 @@ local function scan()
             next()
             assert(p_chr == 0x27, "expected ' at pos: " .. p_curpos)
             p_lit = string_sub(p_src, beg+1, p_curpos-1)
-            p_val = string_byte(p_lit)
+            p_val = Hex{string_byte(p_lit)}
             next()
         elseif p_tok == ":" then
             next()

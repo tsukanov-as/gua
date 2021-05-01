@@ -559,8 +559,8 @@ test "exp_16"
     y := '''
 ]]
 [[
-    local x = 65
-    local y = 39
+    local x = 0x41
+    local y = 0x27
 ]]
 
 test "exp_17"
@@ -674,7 +674,7 @@ test "exp_23"
         [mock.field] = 8;
         [mock:field()] = 9;
         [{mock:field(1, 2)}] = 10;
-        [65] = 11;
+        [0x41] = 11;
     }
 ]]
 
