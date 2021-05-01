@@ -114,7 +114,7 @@ local nodes = {
     ["value"   ] = Fields{"Type", "Pos", "Len", "Value"},
     ["field"   ] = Fields{"Type", "Pos", "Len", "Args", "Name", "Dot"},
     ["index"   ] = Fields{"Type", "Pos", "Len", "Expr"},
-    ["id"      ] = Fields{"Type", "Pos", "Len", "Name", "Tail", "Args", "Self"},
+    ["id"      ] = Fields{"Type", "Pos", "Len", "Name", "Tail", "Args"},
     ["table"   ] = Fields{"Type", "Pos", "Len", "List"},
     ["pair"    ] = Fields{"Type", "Pos", "Len", "Left", "Right"},
     ["list"    ] = Fields{"Type", "Pos", "Len", "List"},
@@ -135,7 +135,7 @@ local nodes = {
     ["break"   ] = Fields{"Type", "Pos", "Len"},
     ["continue"] = Fields{"Type", "Pos", "Len"},
     ["label"   ] = Fields{"Type", "Pos", "Len", "Name"},
-    ["func"    ] = Fields{"Type", "Pos", "Len", "Name", "Params", "Body", "Receiver"},
+    ["func"    ] = Fields{"Type", "Pos", "Len", "Name", "Params", "Body", "Receiver", "Dot"},
     ["nop"     ] = Fields{"Type", "Pos", "Len"},
     ["vararg"  ] = Fields{"Type", "Pos", "Len"},
     ["param"   ] = Fields{"Type", "Pos", "Len", "Name"},
@@ -1015,6 +1015,7 @@ parse_func = function(lambda)
     local pos = p_tokpos
     local name = false
     local receiver = false
+    local dot = false
     local vars
     skip("func")
     if not lambda then
@@ -1022,6 +1023,7 @@ parse_func = function(lambda)
         name = p_lit
         scan()
         if p_tok == "." then
+            dot = true
             scan()
             expect("id")
             assertf(find_var(name), "undeclared variable '%s'", name)
@@ -1029,6 +1031,13 @@ parse_func = function(lambda)
             name = p_lit
             scan()
             vars = {["self"] = Node{"id", 0, 0, "self", false, false}}
+        elseif p_tok == "::" then
+            scan()
+            expect("id")
+            assertf(find_var(name), "undeclared variable '%s'", name)
+            receiver = name
+            name = p_lit
+            scan()
         else
             assertf(not find_var(name), "re-declaring variable '%s'", name)
         end
@@ -1037,7 +1046,7 @@ parse_func = function(lambda)
     local params = parse_params()
     local body = parse_block()
     close_scope()
-    local node = Node{"func", pos, p_endpos-pos, name, params, body, receiver}
+    local node = Node{"func", pos, p_endpos-pos, name, params, body, receiver, dot}
     if not lambda then
         p_vars[name] = node
     end
@@ -1550,7 +1559,11 @@ visit_func = function(node, lambda)
     if lambda then
         v_res[#v_res+1] = "function"
     elseif node[7] then
-        v_res[#v_res+1] = space() .. "function " .. node[7] .. ":" .. node[4]
+        if node[8] then
+            v_res[#v_res+1] = space() .. "function " .. node[7] .. ":" .. node[4]
+        else
+            v_res[#v_res+1] = space() .. "function " .. node[7] .. "." .. node[4]
+        end
     else
         v_res[#v_res+1] = space() .. "local function " .. node[4]
     end

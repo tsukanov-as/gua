@@ -117,6 +117,20 @@ test "func_03"
 
 test "func_04"
 [[
+    x := []
+    func x::foo(y) {
+        print(y)
+    }
+]]
+[[
+    local x = {}
+    function x.foo(y)
+        print(y)
+    end
+]]
+
+test "func_05"
+[[
     func foo(p1, p2, ...) {
         print(p2, p1, ...)
     }
@@ -163,6 +177,16 @@ test "return_03"
         local x = 1
         return p1, p2, x
     end
+]]
+
+test "return_04"
+[[
+    x := 1
+    return x
+]]
+[[
+    local x = 1
+    return x
 ]]
 
 test "if_01"
@@ -771,16 +795,6 @@ test "do_01"
         local x = 1
         x = 2
     end
-]]
-
-test "return_01"
-[[
-    x := 1
-    return x
-]]
-[[
-    local x = 1
-    return x
 ]]
 
 print("OK.", os.clock())
