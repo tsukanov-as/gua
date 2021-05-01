@@ -505,14 +505,14 @@ test "exp_14"
     x8 := 0b0011
 ]]
 [[
-    local x1 = 175
-    local x2 = 31
-    local x3 = 11259375
-    local x4 = 11259375
-    local x5 = 591751049
-    local x6 = 4294967295
-    local x7 = 1
-    local x8 = 3
+    local x1 = 0xAF
+    local x2 = 0x1F
+    local x3 = 0xABCDEF
+    local x4 = 0xABCDEF
+    local x5 = 0x23456789
+    local x6 = 0xFFFFFFFF
+    local x7 = 0x1
+    local x8 = 0x3
 ]]
 
 test "exp_15"

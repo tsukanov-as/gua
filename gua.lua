@@ -48,6 +48,12 @@ local Type = {
 }
 setmetatable(Type, Type)
 
+local Hex = Type{
+    __tostring = function(t)
+        return string_format("0x%X", t[1])
+    end;
+}
+
 local List = Type{
     __tostring = function(t)
         local res = {}
@@ -290,7 +296,11 @@ local function scan()
             end
             p_tok = "num"
             p_lit = string_sub(p_src, beg, p_curpos-1)
-            p_val = assert(tonumber(p_lit, base))
+            if base == 10 then
+                p_val = assert(tonumber(p_lit))
+            else
+                p_val = Hex{assert(tonumber(p_lit, base))}
+            end
         elseif p_tok == "str" then
             local beg = p_curpos
             repeat
