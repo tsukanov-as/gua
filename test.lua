@@ -529,34 +529,6 @@ test "exp_15"
     end
 ]]
 
-test "exp_15"
-[=[
-    x := {
-        name1: 1,
-        "name2": 2,
-        3: 4,
-        true: 5,
-        [next]: 6,
-        [next()]: 7,
-        [mock.field]: 8,
-        [mock.field()]: 9,
-        [[mock.field(1, 2)]]: 10,
-    }
-]=]
-[[
-    local x = {
-        name1 = 1;
-        ["name2"] = 2;
-        [3] = 4;
-        [true] = 5;
-        [next] = 6;
-        [next()] = 7;
-        [mock.field] = 8;
-        [mock:field()] = 9;
-        [{mock:field(1, 2)}] = 10;
-    }
-]]
-
 test "exp_16"
 [[
     x := 'A'
@@ -650,6 +622,70 @@ test "exp_22"
 [[
     local x = 1
     local x, y = 1, 2
+]]
+
+test "exp_23"
+[=[
+    x := {
+        name1: 1,
+        "name2": 2,
+        3: 4,
+        true: 5,
+        [next]: 6,
+        [next()]: 7,
+        [mock.field]: 8,
+        [mock.field()]: 9,
+        [[mock.field(1, 2)]]: 10,
+        'A': 11,
+    }
+]=]
+[[
+    local x = {
+        name1 = 1;
+        ["name2"] = 2;
+        [3] = 4;
+        ["true"] = 5;
+        [next] = 6;
+        [next()] = 7;
+        [mock.field] = 8;
+        [mock:field()] = 9;
+        [{mock:field(1, 2)}] = 10;
+        [65] = 11;
+    }
+]]
+
+test "exp_24"
+[=[
+    x := {
+        repeat: 1,
+        func: 2,
+        true: 3,
+        nil: 4,
+    }
+    x.repeat = 1
+    x.func = 2
+    x.true = 3
+    x.nil = 4
+    x::repeat(1)
+    x::func(2)
+    x::true(3)
+    x::nil(4)
+]=]
+[[
+    local x = {
+        ["repeat"] = 1;
+        ["func"] = 2;
+        ["true"] = 3;
+        ["nil"] = 4;
+    }
+    x["repeat"] = 1
+    x["func"] = 2
+    x["true"] = 3
+    x["nil"] = 4
+    x["repeat"](1)
+    x["func"](2)
+    x["true"](3)
+    x["nil"](4)
 ]]
 
 test "inc_01"

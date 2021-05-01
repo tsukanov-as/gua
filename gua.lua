@@ -106,7 +106,7 @@ local Fields = Type{
 local nodes = {
     ["module"  ] = Fields{"Type", "Pos", "Len", "Body", "Comments"},
     ["value"   ] = Fields{"Type", "Pos", "Len", "Value"},
-    ["field"   ] = Fields{"Type", "Pos", "Len", "Args", "Name"},
+    ["field"   ] = Fields{"Type", "Pos", "Len", "Args", "Name", "Dot"},
     ["index"   ] = Fields{"Type", "Pos", "Len", "Expr"},
     ["id"      ] = Fields{"Type", "Pos", "Len", "Name", "Tail", "Args", "Self"},
     ["table"   ] = Fields{"Type", "Pos", "Len", "List"},
@@ -153,6 +153,7 @@ local Node = Type{
 }
 
 local KEYWORDS = Set{"break", "continue", "else", "false", "for", "func", "if", "in", "nil", "return", "true", "switch", "case", "default"}
+local RESERVED = Set{"local", "function", "while", "do", "end", "repeat", "until", "and", "or", "not", "then", "elseif"}
 local LITERALS = Set{"str", "chr", "num", "true", "false", "nil"}
 local REL_OPS = Set{"==", "!=", "<", ">", "<=", ">="}
 local MUL_OPS = Set{"*", "/", "%"}
@@ -494,6 +495,9 @@ local function parse_tail(call)
             else
                 call = false
             end
+            if args and dot and (KEYWORDS[name] or RESERVED[name]) then
+                errorf("name '%s' cannot be used in a method call", name)
+            end
             local item = Node{"field", pos, last - pos, args or false, name, dot}
             i = i + 1
             tail[i] = item
@@ -514,6 +518,7 @@ end
 local function parse_id()
     local pos = p_tokpos
     local name = p_lit
+    assertf(not RESERVED[name], "name '%s' is reserved", name)
     if p_skip_id_check then
         p_skipped_id_name = name
         p_skip_id_check = false
@@ -568,7 +573,7 @@ parse_table = function()
     while p_tok ~= "}" do
         local key_pos = p_tokpos
         local left
-        if p_tok == "id" then
+        if p_tok == "id" or KEYWORDS[p_lit] then
             left = Node{"id", key_pos, #p_lit, p_lit, false, false}
             scan()
         elseif p_tok == "[" then
@@ -909,6 +914,7 @@ local function parse_for()
         scan()
         expect("id")
         local name = p_lit
+        assertf(not RESERVED[name], "name '%s' is reserved", name)
         assertf(not find_var(name), "variable shadowing is prohibited, you need to change the name '%s'", name)
         local id = Node{"id", p_tokpos, #name, name, false, false}
         ids[#ids+1] = id
@@ -1134,11 +1140,16 @@ end
 
 local function visit_field(node)
     local args = node[4]
+    local name = node[5]
     if args then
         if node[6] then
-            v_res[#v_res+1] = ":" .. node[5] .. "("
+            v_res[#v_res+1] = ":" .. name .. "("
         else
-            v_res[#v_res+1] = "." .. node[5] .. "("
+            if KEYWORDS[name] or RESERVED[name] then
+                v_res[#v_res+1] = '["' .. name .. '"]('
+            else
+                v_res[#v_res+1] = "." .. name .. "("
+            end
         end
         if #args > 0 then
             for _, v in ipairs(args) do
@@ -1149,7 +1160,11 @@ local function visit_field(node)
         end
         v_res[#v_res+1] = ")"
     else
-        v_res[#v_res+1] = "." .. node[5]
+        if KEYWORDS[name] or RESERVED[name] then
+            v_res[#v_res+1] = '["' .. name .. '"]'
+        else
+            v_res[#v_res+1] = "." .. name
+        end
     end
 end
 
@@ -1187,7 +1202,14 @@ end
 local function visit_pair(node)
     local key = node[4]
     if key[1] == "id" and not key[5] and not key[6] then
-        visit_expr(key)
+        local name = key[4]
+        if KEYWORDS[name] or RESERVED[name] then
+            v_res[#v_res+1] = '["'
+            visit_expr(key)
+            v_res[#v_res+1] = '"]'
+        else
+            visit_expr(key)
+        end
     elseif key[1] == "index" then
         visit_index(key)
     else
