@@ -712,6 +712,37 @@ test "exp_24"
     x["nil"](4)
 ]]
 
+test "exp_25"
+[[
+    func foo(s) {
+        print(s)
+    }
+    x := foo'B'
+]]
+[[
+    local function foo(s)
+        print(s)
+    end
+    local x = foo(0x42)
+]]
+
+test "exp_26"
+[[
+    y := {}
+    func y.foo(s) {
+        print(s)
+    }
+    x := y.foo'B'
+]]
+[[
+    local y = {
+    }
+    function y:foo(s)
+        print(s)
+    end
+    local x = y:foo(0x42)
+]]
+
 test "inc_01"
 [[
     x := 0
