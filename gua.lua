@@ -1549,7 +1549,9 @@ visit_stmt = function(node)
     elseif t == "switch" then
         visit_switch(node)
     elseif t == "block" then
+        v_res[#v_res+1] = space() .. "do\n"
         visit_block(node)
+        v_res[#v_res+1] = space() .. "end\n"
     elseif t == "for" then
         visit_for(node)
     elseif t == "for_to" then

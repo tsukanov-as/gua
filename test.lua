@@ -723,4 +723,18 @@ test "switch_02"
     end
 ]]
 
+test "do_01"
+[[
+    {
+        x := 1
+        x = 2
+    }
+]]
+[[
+    do
+        local x = 1
+        x = 2
+    end
+]]
+
 print("OK.", os.clock())
