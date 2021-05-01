@@ -672,4 +672,55 @@ test "dec_01"
     x = x - 2
 ]]
 
+test "switch_01"
+[[
+    x := 1
+    y := 1
+    switch x {
+    case 1 + 0, 2; y > 0:
+        print(1)
+    case 3, 4:
+        print(2)
+    default:
+        print(3)
+    }
+]]
+[[
+    local x = 1
+    local y = 1
+    do
+        local case = x
+        if (case == (1 + 0) or case == 2) and y > 0 then
+            print(1)
+        elseif case == 3 or case == 4 then
+            print(2)
+        else
+            print(3)
+        end
+    end
+]]
+
+test "switch_02"
+[[
+    x := 1
+    switch {
+    case x > 1:
+        print(1)
+    case x < 1:
+        print(1)
+    default:
+        print(3)
+    }
+]]
+[[
+    local x = 1
+    if x > 1 then
+        print(1)
+    elseif x < 1 then
+        print(1)
+    else
+        print(3)
+    end
+]]
+
 print("OK.", os.clock())

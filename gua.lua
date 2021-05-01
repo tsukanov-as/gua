@@ -104,36 +104,38 @@ local Fields = Type{
 }
 
 local nodes = {
-    ["module"] =   Fields{"Type", "Body", "Comments"},
-    ["value"] =    Fields{"Type", "Pos", "Len", "Value"},
-    ["field"] =    Fields{"Type", "Pos", "Len", "Args", "Name"},
-    ["index"] =    Fields{"Type", "Pos", "Len", "Expr"},
-    ["id"] =       Fields{"Type", "Pos", "Len", "Name", "Tail", "Args", "Self"},
-    ["table"] =    Fields{"Type", "Pos", "Len", "List"},
-    ["pair"] =     Fields{"Type", "Pos", "Len", "Left", "Right"},
-    ["list"] =     Fields{"Type", "Pos", "Len", "List"},
-    ["paren"] =    Fields{"Type", "Pos", "Len", "Expr"},
-    ["unop"] =     Fields{"Type", "Pos", "Len", "Op", "Expr"},
-    ["binop"] =    Fields{"Type", "Pos", "Len", "Left", "Op", "Right"},
-    ["call"] =     Fields{"Type", "Pos", "Len", "ID"},
-    ["set"] =      Fields{"Type", "Pos", "Len", "Left", "Right"},
-    ["let"] =      Fields{"Type", "Pos", "Len", "Left", "Right"},
-    ["inc"] =      Fields{"Type", "Pos", "Len", "ID", "Expr"},
-    ["dec"] =      Fields{"Type", "Pos", "Len", "ID", "Expr"},
-    ["if"] =       Fields{"Type", "Pos", "Len", "Expr", "Then", "Else"},
-    ["body"] =     Fields{"Type", "Pos", "Len", "Body"},
-    ["for"] =      Fields{"Type", "Pos", "Len", "Expr", "Body"},
-    ["for_to"] =   Fields{"Type", "Pos", "Len", "ID", "From", "Limit", "Step", "Body"},
-    ["for_in"] =   Fields{"Type", "Pos", "Len", "IDs", "INs", "Body"},
-    ["return"] =   Fields{"Type", "Pos", "Len", "List"},
-    ["break"] =    Fields{"Type", "Pos", "Len"},
+    ["module"  ] = Fields{"Type", "Pos", "Len", "Body", "Comments"},
+    ["value"   ] = Fields{"Type", "Pos", "Len", "Value"},
+    ["field"   ] = Fields{"Type", "Pos", "Len", "Args", "Name"},
+    ["index"   ] = Fields{"Type", "Pos", "Len", "Expr"},
+    ["id"      ] = Fields{"Type", "Pos", "Len", "Name", "Tail", "Args", "Self"},
+    ["table"   ] = Fields{"Type", "Pos", "Len", "List"},
+    ["pair"    ] = Fields{"Type", "Pos", "Len", "Left", "Right"},
+    ["list"    ] = Fields{"Type", "Pos", "Len", "List"},
+    ["paren"   ] = Fields{"Type", "Pos", "Len", "Expr"},
+    ["unop"    ] = Fields{"Type", "Pos", "Len", "Op", "Expr"},
+    ["binop"   ] = Fields{"Type", "Pos", "Len", "Left", "Op", "Right"},
+    ["call"    ] = Fields{"Type", "Pos", "Len", "ID"},
+    ["set"     ] = Fields{"Type", "Pos", "Len", "Left", "Right"},
+    ["let"     ] = Fields{"Type", "Pos", "Len", "Left", "Right"},
+    ["inc"     ] = Fields{"Type", "Pos", "Len", "ID", "Expr"},
+    ["dec"     ] = Fields{"Type", "Pos", "Len", "ID", "Expr"},
+    ["if"      ] = Fields{"Type", "Pos", "Len", "Expr", "Then", "Else"},
+    ["block"   ] = Fields{"Type", "Pos", "Len", "Body"},
+    ["for"     ] = Fields{"Type", "Pos", "Len", "Expr", "Body"},
+    ["for_to"  ] = Fields{"Type", "Pos", "Len", "ID", "From", "Limit", "Step", "Body"},
+    ["for_in"  ] = Fields{"Type", "Pos", "Len", "IDs", "INs", "Body"},
+    ["return"  ] = Fields{"Type", "Pos", "Len", "List"},
+    ["break"   ] = Fields{"Type", "Pos", "Len"},
     ["continue"] = Fields{"Type", "Pos", "Len"},
-    ["label"] =    Fields{"Type", "Pos", "Len", "Name"},
-    ["func"] =     Fields{"Type", "Pos", "Len", "Name", "Params", "Body", "Receiver"},
-    ["nop"] =      Fields{"Type", "Pos", "Len"},
-    ["vararg"] =   Fields{"Type", "Pos", "Len"},
-    ["param"] =    Fields{"Type", "Pos", "Len", "Name"},
-    ["params"] =   Fields{"Type", "Pos", "Len", "List"}
+    ["label"   ] = Fields{"Type", "Pos", "Len", "Name"},
+    ["func"    ] = Fields{"Type", "Pos", "Len", "Name", "Params", "Body", "Receiver"},
+    ["nop"     ] = Fields{"Type", "Pos", "Len"},
+    ["vararg"  ] = Fields{"Type", "Pos", "Len"},
+    ["param"   ] = Fields{"Type", "Pos", "Len", "Name"},
+    ["params"  ] = Fields{"Type", "Pos", "Len", "List"},
+    ["switch"  ] = Fields{"Type", "Pos", "Len", "Expr", "Cases", "Default"},
+    ["case"    ] = Fields{"Type", "Pos", "Len", "List", "Expr", "Body"},
 }
 
 local Node = Type{
@@ -150,7 +152,7 @@ local Node = Type{
     end;
 }
 
-local KEYWORDS = Set{"break", "continue", "else", "false", "for", "func", "if", "in", "nil", "return", "true"}
+local KEYWORDS = Set{"break", "continue", "else", "false", "for", "func", "if", "in", "nil", "return", "true", "switch", "case", "default"}
 local LITERALS = Set{"str", "chr", "num", "true", "false", "nil"}
 local REL_OPS = Set{"==", "!=", "<", ">", "<=", ">="}
 local MUL_OPS = Set{"*", "/", "%"}
@@ -264,9 +266,10 @@ local function scan()
                 end
             end
             if base == 10 then
-                repeat
+                p_tok = MAP[p_chr]
+                while p_tok == DIGIT do
                     p_tok = MAP[next()]
-                until p_tok ~= DIGIT
+                end
                 if p_chr == 0x2E then -- .
                     repeat
                         p_tok = MAP[next()]
@@ -726,7 +729,7 @@ parse_expr = function()
     return left
 end
 
-local parse_body
+local parse_block, parse_body
 
 local function parse_set_or_call()
     local pos = p_tokpos
@@ -809,17 +812,65 @@ local function parse_if()
     local pos = p_tokpos
     skip("if")
     local expr = parse_expr()
-    local body = parse_body()
+    local body = parse_block()
     local else_body = false
     if p_tok == "else" then
         scan()
         if p_tok == "if" then
             else_body = parse_if()
         else
-            else_body = parse_body()
+            else_body = parse_block()
         end
     end
     return Node{"if", pos, p_endpos-pos, expr, body, else_body}
+end
+
+local function parse_switch()
+    local pos = p_tokpos
+    skip("switch")
+    local expr = false
+    local cases = List{}
+    if p_tok == "{" then
+        scan()
+        while p_tok == "case" do
+            scan()
+            local case_expr = parse_expr()
+            skip(":")
+            local body = parse_body()
+            cases[#cases+1] = Node{"case", pos, p_endpos-pos, false, case_expr, body}
+        end
+    else
+        expr = parse_expr()
+        skip("{")
+        expect("case")
+        while p_tok == "case" do
+            scan()
+            local list = List{}
+            while true do
+                list[#list+1] = parse_expr()
+                if p_tok ~= "," then
+                    break
+                end
+                scan()
+            end
+            local case_expr = false
+            if p_tok == ";" then
+                scan()
+                case_expr = parse_expr()
+            end
+            skip(":")
+            local body = parse_body()
+            cases[#cases+1] = Node{"case", pos, p_endpos-pos, list, case_expr, body}
+        end
+    end
+    local default = false
+    if p_tok == "default" then
+        scan()
+        skip(":")
+        default = parse_body()
+    end
+    skip("}")
+    return Node{"switch", pos, p_endpos-pos, expr, cases, default}
 end
 
 local function parse_for()
@@ -827,14 +878,14 @@ local function parse_for()
     p_looplevel = p_looplevel + 1
     skip("for")
     if p_tok == "{" then
-        local body = parse_body(nil, true)
+        local body = parse_block(nil, true)
         return Node{"for", pos, p_endpos-pos, false, body}
     end
     p_skip_id_check = true
     local expr = parse_expr()
     if expr[1] ~= "id" or expr[5] or expr[6] then
         assertf(find_var(p_skipped_id_name), "undeclared variable '%s'", p_skipped_id_name)
-        local body = parse_body(nil, true)
+        local body = parse_block(nil, true)
         return Node{"for", pos, p_endpos-pos, expr, body}
     end
     local vars = {[expr[4]] = expr}
@@ -849,7 +900,7 @@ local function parse_for()
             scan()
             by = parse_expr()
         end
-        local body = parse_body(vars, true)
+        local body = parse_block(vars, true)
         return Node{"for_to", pos, p_endpos-pos, expr, from, to, by or false, body}
     end
     assertf(not find_var(expr[4]), "variable shadowing is prohibited, you need to change the name '%s'", expr[4])
@@ -877,7 +928,7 @@ local function parse_for()
         scan()
         ins[#ins+1] = parse_expr()
     end
-    local body = parse_body(vars, true)
+    local body = parse_block(vars, true)
     return Node{"for_in", pos, p_endpos-pos, ids, ins, body}
 end
 
@@ -966,7 +1017,7 @@ parse_func = function(lambda)
     end
     open_scope(vars)
     local params = parse_params()
-    local body = parse_body()
+    local body = parse_block()
     close_scope()
     local node = Node{"func", pos, p_endpos-pos, name, params, body, receiver}
     if not lambda then
@@ -983,7 +1034,7 @@ local function parse_statement()
     elseif p_tok == "if" then
         return parse_if()
     elseif p_tok == "{" then
-        return parse_body()
+        return parse_block()
     elseif p_tok == "for" then
         return parse_for()
     elseif p_tok == "return" then
@@ -992,6 +1043,8 @@ local function parse_statement()
         return parse_break()
     elseif p_tok == "continue" then
         return parse_continue()
+    elseif p_tok == "switch" then
+        return parse_switch()
     elseif p_tok == ";" then
         scan()
         return Node{"nop", p_curpos, 1}
@@ -999,9 +1052,7 @@ local function parse_statement()
     return nil
 end
 
-parse_body = function(vars, loop)
-    local pos = p_tokpos
-    skip("{")
+parse_body = function(vars)
     open_scope(vars)
     local body = List{}
     while true do
@@ -1012,13 +1063,20 @@ parse_body = function(vars, loop)
         body[#body+1] = stmt
     end
     close_scope()
+    return body
+end
+
+parse_block = function(vars, loop)
+    local pos = p_tokpos
+    skip("{")
+    local body = parse_body(vars)
     skip("}")
     if loop and p_continue[p_looplevel] then
         body[#body+1] = Node{"label", 0, 0, "continue"}
         p_continue[p_looplevel] = false
         p_looplevel = p_looplevel - 1
     end
-    return Node{"body", pos, p_endpos-pos, body}
+    return Node{"block", pos, p_endpos-pos, body}
 end
 
 local function parse_module(src, vars)
@@ -1039,17 +1097,9 @@ local function parse_module(src, vars)
     p_looplevel = 0
     next()
     scan()
-    open_scope(vars)
-    local body = List{}
-    while true do
-        local stmt = parse_statement()
-        if stmt == nil then
-            break
-        end
-        body[#body+1] = stmt
-    end
-    close_scope()
-    local module = Node{"module", body, p_comments}
+    local pos = p_tokpos
+    local body = parse_body(vars)
+    local module = Node{"module", pos, p_endpos-pos, body, p_comments}
     expect(nil)
     return module
 end
@@ -1230,10 +1280,14 @@ local visit_stmt
 
 local function visit_body(node)
     v_level = v_level + 1
-    for _, v in ipairs(node[4]) do
+    for _, v in ipairs(node) do
         visit_stmt(v)
     end
     v_level = v_level - 1
+end
+
+local function visit_block(node)
+    visit_body(node[4])
 end
 
 local function visit_call(node)
@@ -1294,7 +1348,7 @@ local function visit_if(node)
     v_res[#v_res+1] = space() .. "if "
     visit_expr(node[4])
     v_res[#v_res+1] = " then\n"
-    visit_body(node[5])
+    visit_block(node[5])
     local _else = node[6]
     while _else do
         v_res[#v_res+1] = space() .. "else"
@@ -1302,15 +1356,80 @@ local function visit_if(node)
             v_res[#v_res+1] = "if "
             visit_expr(_else[4])
             v_res[#v_res+1] = " then\n"
-            visit_body(_else[5])
+            visit_block(_else[5])
             _else = _else[6]
         else
             v_res[#v_res+1] = "\n"
-            visit_body(_else)
+            visit_block(_else)
             _else = nil
         end
     end
     v_res[#v_res+1] = space() .. "end\n"
+end
+
+local function visit_switch(node)
+    local expr = node[4]
+    if expr then
+        v_res[#v_res+1] = space() .. "do\n"
+        v_level = v_level + 1
+        v_res[#v_res+1] = space() .. "local case = "
+        visit_expr(expr)
+        v_res[#v_res+1] = "\n" .. space()
+        for _, case in ipairs(node[5]) do
+            v_res[#v_res+1] = "if "
+            local case_exp = case[5]
+            if case_exp then
+                v_res[#v_res+1] = "("
+            end
+            for _, item in ipairs(case[4]) do
+                v_res[#v_res+1] = "case == "
+                if item[1] == "binop" then
+                    v_res[#v_res+1] = "("
+                    visit_expr(item)
+                    v_res[#v_res+1] = ")"
+                else
+                    visit_expr(item)
+                end
+                v_res[#v_res+1] = " or "
+            end
+            if case_exp then
+                v_res[#v_res] = ") and "
+                visit_expr(case_exp)
+            else
+                v_res[#v_res] = ""
+            end
+            v_res[#v_res+1] = " then\n"
+            visit_body(case[6])
+            v_res[#v_res+1] = space() .. "else"
+        end
+        local default = node[6]
+        if default then
+            v_res[#v_res+1] = "\n"
+            visit_body(default)
+        else
+            v_res[#v_res] = ""
+        end
+        v_res[#v_res+1] = space() .. "end\n"
+        v_level = v_level - 1
+        v_res[#v_res+1] = space() .. "end\n"
+    else
+        v_res[#v_res+1] = space()
+        for _, case in ipairs(node[5]) do
+            v_res[#v_res+1] = "if "
+            visit_expr(case[5])
+            v_res[#v_res+1] = " then\n"
+            visit_body(case[6])
+            v_res[#v_res+1] = space() .. "else"
+        end
+        local default = node[6]
+        if default then
+            v_res[#v_res+1] = "\n"
+            visit_body(default)
+        else
+            v_res[#v_res] = ""
+        end
+        v_res[#v_res+1] = space() .. "end\n"
+    end
 end
 
 local function visit_for(node)
@@ -1322,7 +1441,7 @@ local function visit_for(node)
         v_res[#v_res+1] = "true"
     end
     v_res[#v_res+1] = " do\n"
-    visit_body(node[5])
+    visit_block(node[5])
     v_res[#v_res+1] = space() .. "end\n"
 end
 
@@ -1339,7 +1458,7 @@ local function visit_for_to(node)
         visit_expr(step)
     end
     v_res[#v_res+1] = " do\n"
-    visit_body(node[8])
+    visit_block(node[8])
     v_res[#v_res+1] = space() .. "end\n"
 end
 
@@ -1355,7 +1474,7 @@ local function visit_for_in(node)
         v_res[#v_res+1] = ", "
     end
     v_res[#v_res] = " do\n"
-    visit_body(node[6])
+    visit_block(node[6])
     v_res[#v_res+1] = space() .. "end\n"
 end
 
@@ -1402,7 +1521,7 @@ visit_func = function(node, lambda)
         v_res[#v_res+1] = space() .. "local function " .. node[4]
     end
     visit_params(node[5])
-    visit_body(node[6])
+    visit_block(node[6])
     v_res[#v_res+1] = space() .. "end"
     if not lambda then
         v_res[#v_res+1] = "\n"
@@ -1427,8 +1546,10 @@ visit_stmt = function(node)
         visit_let(node)
     elseif t == "if" then
         visit_if(node)
-    elseif t == "body" then
-        visit_body(node)
+    elseif t == "switch" then
+        visit_switch(node)
+    elseif t == "block" then
+        visit_block(node)
     elseif t == "for" then
         visit_for(node)
     elseif t == "for_to" then
@@ -1455,7 +1576,7 @@ end
 local function visit_module(node, level)
     v_res = {}
     v_level = level or 0
-    for _, v in ipairs(node[2]) do
+    for _, v in ipairs(node[4]) do
         visit_stmt(v)
     end
     return table_concat(v_res)
