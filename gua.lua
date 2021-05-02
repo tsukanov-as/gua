@@ -149,7 +149,7 @@ local nodes = {
     ["for_to"  ] = Fields{"Type", "Pos", "Len", "ID", "From", "Limit", "Step", "Body"},
     ["for_in"  ] = Fields{"Type", "Pos", "Len", "IDs", "INs", "Body"},
     ["return"  ] = Fields{"Type", "Pos", "Len", "List"},
-    ["break"   ] = Fields{"Type", "Pos", "Len"},
+    ["break"   ] = Fields{"Type", "Pos", "Len", "Expr"},
     ["continue"] = Fields{"Type", "Pos", "Len"},
     ["label"   ] = Fields{"Type", "Pos", "Len", "Name"},
     ["func"    ] = Fields{"Type", "Pos", "Len", "Name", "Params", "Body", "Receiver", "Dot"},
@@ -1043,8 +1043,13 @@ local function parse_break()
     local pos = p_tokpos
     assert(p_looplevel > 0, "no loop to break")
     skip("break")
+    local expr = false
+    if p_tok == "if" then
+        scan()
+        expr = parse_expr()
+    end
     expect("}")
-    return Node{"break", pos, 5}
+    return Node{"break", pos, 5, expr}
 end
 
 local function parse_continue()
@@ -1614,15 +1619,32 @@ local function visit_switch(node)
 end
 
 local function visit_for(node)
-    v_res[#v_res+1] = space() .. "while "
     local expr = node[4]
+    local block = node[5]
+    local body = block[4]
+    if not expr and #body > 0 then
+        local last = body[#body]
+        if last[1] == "break" then
+            local break_expr = last[4]
+            if break_expr then
+                v_res[#v_res+1] = space() .. "repeat\n"
+                visit_block(block)
+                v_res[#v_res] = ""
+                v_res[#v_res+1] = space() .. "until "
+                visit_expr(break_expr)
+                v_res[#v_res+1] = "\n"
+                return
+            end
+        end
+    end
+    v_res[#v_res+1] = space() .. "while "
     if expr then
         visit_expr(expr)
     else
         v_res[#v_res+1] = "true"
     end
     v_res[#v_res+1] = " do\n"
-    visit_block(node[5])
+    visit_block(block)
     v_res[#v_res+1] = space() .. "end\n"
 end
 

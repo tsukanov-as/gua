@@ -915,4 +915,19 @@ test "const_01"
     local z = 4
 ]]
 
+test "break_01"
+[[
+    x := 0
+    for {
+        x += 1
+        break if x > 10
+    }
+]]
+[[
+    local x = 0
+    repeat
+        x = x + 1
+    until x > 10
+]]
+
 print("OK.", os.clock())
