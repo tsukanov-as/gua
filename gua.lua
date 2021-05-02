@@ -334,6 +334,9 @@ local function scan()
             local beg = p_curpos
             repeat
                 next()
+                if p_chr == LF then
+                    p_line = p_line + 1
+                end
             until p_chr == 0x60 or p_chr == nil
             assert(p_chr == 0x60, 'expected ` at pos: ' .. p_curpos)
             p_lit = string_sub(p_src, beg+1, p_curpos-1)
