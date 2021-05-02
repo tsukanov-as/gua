@@ -601,11 +601,9 @@ local function parse_id()
             call = true
         elseif p_tok == ".{" then
             args = List{parse_table()}
-            scan()
             call = true
         elseif p_tok == ".[" then
             args = List{parse_list()}
-            scan()
             call = true
         end
         tail, call = parse_tail(call)

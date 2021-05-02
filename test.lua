@@ -780,6 +780,33 @@ test "exp_29"
     local x = ("abc"):find("b")
 ]]
 
+test "exp_30"
+[[
+    x := nil
+    y := x.[1, 2]
+    z := 1
+]]
+[[
+    local x = nil
+    local y = x({1, 2})
+    local z = 1
+]]
+
+test "exp_31"
+[[
+    x := nil
+    y := x.{a: 1, b: 2}
+    z := 1
+]]
+[[
+    local x = nil
+    local y = x({
+        a = 1;
+        b = 2;
+    })
+    local z = 1
+]]
+
 test "inc_01"
 [[
     x := 0
