@@ -1280,15 +1280,6 @@ local function visit_id(node)
         return
     end
     v_res[#v_res+1] = node[4]
-    if tail then
-        for _, v in ipairs(tail) do
-            if v[1] == "field" then
-                visit_field(v)
-            else
-                visit_index(v)
-            end
-        end
-    end
     if args then
         v_res[#v_res+1] = "("
         if #args > 0 then
@@ -1299,6 +1290,15 @@ local function visit_id(node)
             v_res[#v_res] = ""
         end
         v_res[#v_res+1] = ")"
+    end
+    if tail then
+        for _, v in ipairs(tail) do
+            if v[1] == "field" then
+                visit_field(v)
+            else
+                visit_index(v)
+            end
+        end
     end
 end
 

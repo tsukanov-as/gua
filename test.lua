@@ -761,6 +761,17 @@ test "exp_27"
 ]]
 ]===]
 
+test "exp_28"
+[[
+    f := func() {}
+    x := f(1).m()
+]]
+[[
+    local f = function()
+    end
+    local x = f(1):m()
+]]
+
 test "inc_01"
 [[
     x := 0
