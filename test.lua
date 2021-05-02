@@ -772,6 +772,14 @@ test "exp_28"
     local x = f(1):m()
 ]]
 
+test "exp_29"
+[[
+    x := "abc".find("b")
+]]
+[[
+    local x = ("abc"):find("b")
+]]
+
 test "inc_01"
 [[
     x := 0

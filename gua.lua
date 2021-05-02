@@ -660,7 +660,12 @@ local parse_func
 
 local function parse_operand()
     local node
-    if LITERALS[p_tok] then
+    if p_tok == "str" then
+        local pos, len, val = p_tokpos, #p_lit, p_val
+        scan()
+        local tail = parse_tail()
+        node = Node{"value", pos, len, val, tail}
+    elseif LITERALS[p_tok] then
         node = Node{"value", p_tokpos, #p_lit, p_val}
         scan()
     elseif p_tok == "id" then
@@ -1228,15 +1233,6 @@ end
 
 local visit_expr
 
-local function visit_value(node)
-    local v = node[4]
-    if type(v) == "string" then
-        v_res[#v_res+1] = '"' .. v .. '"'
-    else
-        v_res[#v_res+1] = tostring(v)
-    end
-end
-
 local function visit_field(node)
     local args = node[4]
     local name = node[5]
@@ -1271,6 +1267,27 @@ local function visit_index(node)
     v_res[#v_res+1] = "["
     visit_expr(node[4])
     v_res[#v_res+1] = "]"
+end
+
+local function visit_value(node)
+    local v = node[4]
+    if type(v) == "string" then
+        local tail = node[5]
+        if tail then
+            v_res[#v_res+1] = '("' .. v .. '")'
+            for _, v in ipairs(tail) do
+                if v[1] == "field" then
+                    visit_field(v)
+                else
+                    visit_index(v)
+                end
+            end
+        else
+            v_res[#v_res+1] = '"' .. v .. '"'
+        end
+    else
+        v_res[#v_res+1] = tostring(v)
+    end
 end
 
 local function visit_id(node)
