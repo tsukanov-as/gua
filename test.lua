@@ -930,4 +930,66 @@ test "break_01"
     until x > 10
 ]]
 
+test "break_02"
+[[
+    x := 0
+    for x < 10 {
+        x += 1
+        break if x > 10
+    }
+]]
+[[
+    local x = 0
+    while x < 10 do
+        x = x + 1
+        if x > 10 then
+            break
+        end
+    end
+]]
+
+test "break_03"
+[[
+    x := 0
+    for x < 10 {
+        x += 1
+        if x > 10 {
+            break
+        }
+        x -= 1
+    }
+]]
+[[
+    local x = 0
+    while x < 10 do
+        x = x + 1
+        if x > 10 then
+            break
+        end
+        x = x - 1
+    end
+]]
+
+test "break_04"
+[[
+    x := 0
+    for {
+        x += 1
+        if x > 10 {
+            break
+        }
+        x -= 1
+    }
+]]
+[[
+    local x = 0
+    while true do
+        x = x + 1
+        if x > 10 then
+            break
+        end
+        x = x - 1
+    end
+]]
+
 print("OK.", os.clock())

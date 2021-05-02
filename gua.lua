@@ -1256,6 +1256,7 @@ end
 
 local v_res = {}
 local v_level = 0
+local v_skip_break = false
 local LUA_OPS = setmetatable({
     ["!"] = "not ";
     ["&&"] = "and";
@@ -1628,8 +1629,8 @@ local function visit_for(node)
             local break_expr = last[4]
             if break_expr then
                 v_res[#v_res+1] = space() .. "repeat\n"
+                v_skip_break = true
                 visit_block(block)
-                v_res[#v_res] = ""
                 v_res[#v_res+1] = space() .. "until "
                 visit_expr(break_expr)
                 v_res[#v_res+1] = "\n"
@@ -1696,7 +1697,22 @@ local function visit_return(node)
 end
 
 local function visit_break(node)
-    v_res[#v_res+1] = space() .. "break\n"
+    if v_skip_break then
+        v_skip_break = false
+        return
+    end
+    local expr = node[4]
+    if expr then
+        v_res[#v_res+1] = space() .. "if "
+        visit_expr(expr)
+        v_res[#v_res+1] = " then\n"
+        v_level = v_level + 1
+        v_res[#v_res+1] = space() .. "break\n"
+        v_level = v_level - 1
+        v_res[#v_res+1] = space() .. "end\n"
+    else
+        v_res[#v_res+1] = space() .. "break\n"
+    end
 end
 
 local function visit_continue(node)
