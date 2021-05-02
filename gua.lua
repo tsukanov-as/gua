@@ -234,6 +234,14 @@ local p_continue = List{}
 local p_looplevel = 0
 -------------------------------------------------------------------------------
 
+local function errorf(notef, ...)
+    if p_path then
+        error(p_path .. ":" .. p_line .. ": " .. string_format(notef, ...), 2)
+    else
+        error(string_format(notef, ...) .. " in line " .. p_line, 2)
+    end
+end
+
 local function next()
     p_curpos = p_curpos + 1
     p_chr = string_byte(p_src, p_curpos)
@@ -273,21 +281,29 @@ local function scan()
                 if p_chr == 0x58 or p_chr == 0x78 then -- X, x
                     next()
                     beg = p_curpos
-                    assert(HEX[p_chr], 'expected hex digit at pos: ' .. p_curpos)
+                    if HEX[p_chr] == nil then
+                        errorf("expected hex digit, found '%c'", p_chr)
+                    end
                     repeat
                         next()
                     until not HEX[p_chr]
                     base = 16
-                    assert(p_curpos-beg <= 8)
+                    if p_curpos-beg > 8 then
+                        errorf("integer greater than 32 bits", p_tok)
+                    end
                 elseif p_chr == 0x42 or p_chr == 0x62 then -- B, b
                     next()
                     beg = p_curpos
-                    assert(p_chr == 0x30 or p_chr == 0x31, 'expected bin digit at pos: ' .. p_curpos)
+                    if p_chr ~= 0x30 and p_chr ~= 0x31 then
+                        errorf("expected bin digit, found '%c'", p_chr)
+                    end
                     repeat
                         next()
                     until p_chr ~= 0x30 and p_chr ~= 0x31
                     base = 2
-                    assert(p_curpos-beg <= 32)
+                    if p_curpos-beg > 32 then
+                        errorf("integer greater than 32 bits", p_tok)
+                    end
                 end
             end
             if base == 10 then
@@ -306,7 +322,9 @@ local function scan()
                         next()
                     end
                     p_tok = MAP[p_chr]
-                    assert(p_tok == DIGIT, 'expected digit at pos: ' .. p_curpos)
+                    if p_tok ~= DIGIT then
+                        errorf("expected digit, found '%s'", p_tok)
+                    end
                     repeat
                         p_tok = MAP[next()]
                     until p_tok ~= DIGIT
@@ -315,9 +333,12 @@ local function scan()
             p_tok = "num"
             p_lit = string_sub(p_src, beg, p_curpos-1)
             if base == 10 then
-                p_val = assert(tonumber(p_lit))
+                p_val = tonumber(p_lit)
             else
-                p_val = Hex{assert(tonumber(p_lit, base))}
+                p_val = Hex{tonumber(p_lit, base)}
+            end
+            if p_val == nil then
+                errorf("malformed number '%s'", p_lit)
             end
         elseif p_tok == "str" then
             local beg = p_curpos
@@ -327,7 +348,9 @@ local function scan()
                     next()
                 end
             until p_chr == 0x22 or p_chr == LF or p_chr == nil
-            assert(p_chr == 0x22, 'expected " at pos: ' .. p_curpos)
+            if p_chr ~= 0x22 then
+                errorf("expected \", found EOL")
+            end
             p_lit = string_sub(p_src, beg+1, p_curpos-1)
             p_val = p_lit
             next()
@@ -339,7 +362,9 @@ local function scan()
                     p_line = p_line + 1
                 end
             until p_chr == 0x60 or p_chr == nil
-            assert(p_chr == 0x60, 'expected ` at pos: ' .. p_curpos)
+            if p_chr ~= 0x60 then
+                errorf("expected `, found '%c'", p_chr)
+            end
             p_lit = string_sub(p_src, beg+1, p_curpos-1)
             p_val = Raw{p_lit}
             next()
@@ -347,7 +372,9 @@ local function scan()
             local beg = p_curpos
             next()
             next()
-            assert(p_chr == 0x27, "expected ' at pos: " .. p_curpos)
+            if p_chr ~= 0x27 then
+                errorf("expected ', found '%c'", p_chr)
+            end
             p_lit = string_sub(p_src, beg+1, p_curpos-1)
             p_val = Hex{string_byte(p_lit)}
             next()
@@ -432,6 +459,8 @@ local function scan()
                 p_tok = ".{"
                 next()
             end
+        elseif p_tok == nil and p_chr ~= nil then
+            errorf("unknown symbol '%c'", p_chr)
         else
             next()
         end
@@ -479,14 +508,6 @@ local function find_var(name)
         var = p_scope[i][name]
     end
     return var, i
-end
-
-local function errorf(notef, ...)
-    if p_path then
-        error(p_path .. ":" .. p_line .. ": " .. string_format(notef, ...), 2)
-    else
-        error(string_format(notef, ...) .. " in line " .. p_line, 2)
-    end
 end
 
 local function assertf(expr, notef, ...)
