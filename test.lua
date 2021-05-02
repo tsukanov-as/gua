@@ -373,6 +373,20 @@ test "for_08"
     end
 ]]
 
+test "for_09"
+[[
+    y := 0
+    for y {
+        print(y)
+    }
+]]
+[[
+    local y = 0
+    while y do
+        print(y)
+    end
+]]
+
 test "exp_01"
 [[
     x := 1 + 2 * 3 / 4 % 5
@@ -535,8 +549,8 @@ test "exp_14"
     local x4 = 0xABCDEF
     local x5 = 0x23456789
     local x6 = 0xFFFFFFFF
-    local x7 = 0x1
-    local x8 = 0x3
+    local x7 = 0x01
+    local x8 = 0x03
 ]]
 
 test "exp_15"
@@ -584,7 +598,7 @@ test "exp_18"
     local function foo(s)
         print(s)
     end
-    local x = foo("hello")
+    local x = foo"hello"
 ]]
 
 test "exp_19"
@@ -600,7 +614,7 @@ test "exp_19"
     function y:foo(s)
         print(s)
     end
-    local x = y:foo("hello")
+    local x = y:foo"hello"
 ]]
 
 test "exp_20"
@@ -617,10 +631,10 @@ test "exp_20"
     local function Struct(t)
         print(t)
     end
-    local x = Struct({
+    local x = Struct{
         one = 1;
         two = 2;
-    })
+    }
 ]]
 
 test "exp_21"
@@ -634,7 +648,7 @@ test "exp_21"
     local function List(t)
         print(t)
     end
-    local x = List({1, 2, 3})
+    local x = List{1, 2, 3}
 ]]
 
 test "exp_22"
@@ -680,7 +694,7 @@ test "exp_23"
 ]=]
 
 test "exp_24"
-[=[
+[[
     x := {
         repeat: 1,
         func: 2,
@@ -695,7 +709,7 @@ test "exp_24"
     x::func(2)
     x::true(3)
     x::nil(4)
-]=]
+]]
 [[
     local x = {
         ["repeat"] = 1;
@@ -786,7 +800,7 @@ test "exp_30"
 ]]
 [[
     local x = nil
-    local y = x({1, 2})
+    local y = x{1, 2}
     local z = 1
 ]]
 
@@ -798,10 +812,10 @@ test "exp_31"
 ]]
 [[
     local x = nil
-    local y = x({
+    local y = x{
         a = 1;
         b = 2;
-    })
+    }
     local z = 1
 ]]
 
@@ -919,6 +933,14 @@ test "break_01"
 [[
     x := 0
     for {
+        y := 0
+        if y == 42 {
+            break if true
+        }
+        for {
+            y += 1
+            break if y > 10
+        }
         x += 1
         break if x > 10
     }
@@ -926,6 +948,15 @@ test "break_01"
 [[
     local x = 0
     repeat
+        local y = 0
+        if y == 42 then
+            if true then
+                break
+            end
+        end
+        repeat
+            y = y + 1
+        until y > 10
         x = x + 1
     until x > 10
 ]]
