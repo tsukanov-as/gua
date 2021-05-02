@@ -324,6 +324,7 @@ local function scan()
             repeat
                 if next() == 0x5C then -- \
                     next()
+                    next()
                 end
             until p_chr == 0x22 or p_chr == LF or p_chr == nil
             assert(p_chr == 0x22, 'expected " at pos: ' .. p_curpos)

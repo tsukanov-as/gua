@@ -807,6 +807,14 @@ test "exp_31"
     local z = 1
 ]]
 
+test "exp_32"
+[[
+    x := "aaa\"bbb"
+]]
+[[
+    local x = "aaa\"bbb"
+]]
+
 test "inc_01"
 [[
     x := 0
