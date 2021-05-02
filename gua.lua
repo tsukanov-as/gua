@@ -1009,6 +1009,7 @@ end
 
 local function parse_break()
     local pos = p_tokpos
+    assert(p_looplevel > 0, "no loop to break")
     skip("break")
     expect("}")
     return Node{"break", pos, 5}
@@ -1016,6 +1017,7 @@ end
 
 local function parse_continue()
     local pos = p_tokpos
+    assert(p_looplevel > 0, "no loop to continue")
     skip("continue")
     expect("}")
     p_continue[p_looplevel] = true
