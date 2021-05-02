@@ -1377,6 +1377,10 @@ local function visit_pair(node)
 end
 
 local function visit_table(node)
+    if #node[4] == 0 then
+        v_res[#v_res+1] = "{}"
+        return
+    end
     v_res[#v_res+1] = "{\n"
     v_level = v_level + 1
     for _, v in ipairs(node[4]) do

@@ -596,8 +596,7 @@ test "exp_19"
     x := y.foo "hello"
 ]]
 [[
-    local y = {
-    }
+    local y = {}
     function y:foo(s)
         print(s)
     end
@@ -737,8 +736,7 @@ test "exp_26"
     x := y.foo'B'
 ]]
 [[
-    local y = {
-    }
+    local y = {}
     function y:foo(s)
         print(s)
     end
