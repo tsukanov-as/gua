@@ -1193,9 +1193,9 @@ local function parse_module(src, vars)
     p_lit = ''
     p_val = nil
     p_comments = List{}
-    p_vars = {}
-    p_level = 0
-    p_scope = List{}
+    p_vars = {_G = {"id", 0, 0, "_G", false, false}}
+    p_level = 1
+    p_scope = List{p_vars}
     p_continue = List{}
     p_looplevel = 0
     next()
