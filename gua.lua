@@ -446,7 +446,11 @@ local function expect(t, l)
         else
             str = tostring(p_tok)
         end
-        error(string_format("expected '%s', found '%s' in line %d", tostring(t), str, p_line), l or 2)
+        if p_path then
+            error(string_format("%s:%d: expected '%s', found '%s'", p_path, p_line, tostring(t), str), l or 2)
+        else
+            error(string_format("expected '%s', found '%s' in line %d", tostring(t), str, p_line), l or 2)
+        end
     end
 end
 
@@ -477,12 +481,20 @@ local function find_var(name)
 end
 
 local function errorf(notef, ...)
-    error(string_format(notef, ...) .. " in line " .. p_line, 2)
+    if p_path then
+        error(p_path .. ":" .. p_line .. ": " .. string_format(notef, ...), 2)
+    else
+        error(string_format(notef, ...) .. " in line " .. p_line, 2)
+    end
 end
 
 local function assertf(expr, notef, ...)
     if not expr then
-        error(string_format(notef, ...) .. " in line " .. p_line, 2)
+        if p_path then
+            error(p_path .. ":" .. p_line .. ": " .. string_format(notef, ...), 2)
+        else
+            error(string_format(notef, ...) .. " in line " .. p_line, 2)
+        end
     end
     return expr
 end
@@ -1189,7 +1201,8 @@ parse_block = function(vars, loop)
     return Node{"block", pos, p_endpos-pos, body}
 end
 
-local function parse_module(src, vars)
+local function parse_module(src, path, vars)
+    p_path = path
     p_src = src
     p_line = 1
     p_curpos = 0
@@ -1732,6 +1745,22 @@ local function visit_module(node, level)
         visit_stmt(v)
     end
     return table_concat(v_res)
+end
+
+do
+    local fn = _G.arg[1]
+    if fn then
+        local os, io, pcall, print = _G.os, _G.io, _G.pcall, _G.print
+        local src = io.open(fn, "r"):read("a")
+        local r, m = pcall(parse_module, src, fn)
+        if r then
+            local res = visit_module(m, 0)
+            io.open(fn .. ".lua", "w"):write(res)
+        else
+            print(m)
+            os.exit(1)
+        end
+    end
 end
 
 return {

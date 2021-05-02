@@ -1,4 +1,5 @@
 sandbox.lua
+sandbox.gua*
 jit/*
 coverage/*
 cover.sh

@@ -8,7 +8,7 @@ local function test(name)
         mock =  {"id", 0, 0, "mock", false, false};
     }
     return function(src)
-        local r, m = pcall(gua.parse_module, src, vars)
+        local r, m = pcall(gua.parse_module, src, nil, vars)
         if not r then
             error("failed: " .. name .. "\nerror: " .. m)
         end

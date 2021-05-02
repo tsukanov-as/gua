@@ -18,6 +18,15 @@
                 "command": "luajit"
             },
             "args": ["test.lua"]
+        },
+        {
+            "name": "transpile",
+            "type": "lua-local",
+            "request": "launch",
+            "program": {
+                "command": "luajit",
+            },
+            "args": ["./gua.lua", "${file}"]
         }
     ]
 }
