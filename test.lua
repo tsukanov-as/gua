@@ -513,6 +513,28 @@ test "exp_12"
     local a = "abc" .. "def" .. 123 + 1
 ]]
 
+if _VERSION > "Lua 5.2" then
+
+test "exp_13"
+[[
+    x1 := 1e3
+    x2 := 1e-3
+    x3 := 1.e3
+    x4 := 1.e-3
+    x5 := 1.2e3
+    x6 := 1.2e-3
+]]
+[[
+    local x1 = 1000.0
+    local x2 = 0.001
+    local x3 = 1000.0
+    local x4 = 0.001
+    local x5 = 1200.0
+    local x6 = 0.0012
+]]
+
+else
+
 test "exp_13"
 [[
     x1 := 1e3
@@ -530,6 +552,8 @@ test "exp_13"
     local x5 = 1200
     local x6 = 0.0012
 ]]
+
+end
 
 test "exp_14"
 [[
@@ -688,13 +712,13 @@ test "exp_26"
 [[]]
 
 test "exp_27"
-[[
+[===[
     x := `a[=[aa[[aa`
     y := `a[==[aa[[aa`
     z := `
     abc
 `
-]]
+]===]
 [===[
     local x =  [==[a[=[aa[[aa]==]
     local y =  [=[a[==[aa[[aa]=]
