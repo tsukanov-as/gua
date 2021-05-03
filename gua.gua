@@ -1,24 +1,24 @@
--- MIT License
+// MIT License
 
--- Copyright (c) 2021 tsukanov-as
+// Copyright (c) 2021 tsukanov-as
 
--- Permission is hereby granted, free of charge, to any person obtaining a copy
--- of this software and associated documentation files (the "Software"), to deal
--- in the Software without restriction, including without limitation the rights
--- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
--- copies of the Software, and to permit persons to whom the Software is
--- furnished to do so, subject to the following conditions:
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
 
--- The above copyright notice and this permission notice shall be included in all
--- copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
 
--- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
--- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
--- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
--- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
--- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
--- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
--- SOFTWARE.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 _G::setfenv(1, {_G: _G})
 
@@ -223,14 +223,13 @@ ALPHA_OR_DIGIT := {}
     }
 }
 
--------------------------------------------------------------------------------
--- parser state
+// parser state
 p_path := nil
 p_src := nil
 p_line := 1
 p_curpos := 0
-p_tokpos := 0 -- current token pos
-p_endpos := 0 -- previous token end pos
+p_tokpos := 0 // current token pos
+p_endpos := 0 // previous token end pos
 p_chr := nil
 p_tok := nil
 p_lit := ""
@@ -243,7 +242,6 @@ p_skip_id_check := false
 p_skipped_id_name := nil
 p_continue := List.[]
 p_looplevel := 0
--------------------------------------------------------------------------------
 
 func errorf(notef, ...) {
     if p_path {
@@ -253,7 +251,7 @@ func errorf(notef, ...) {
     }
 }
 
--- _scan(...) ?
+// _scan(...) ?
 
 func scan() {
     byte := string_byte
@@ -424,7 +422,13 @@ func scan() {
             }
         case "-":
             pos += 1; chr = byte(src, pos)
-            if chr == '-' {
+            if chr == '=' {
+                tok = "-="
+                pos += 1; chr = byte(src, pos)
+            }
+        case "/":
+            pos += 1; chr = byte(src, pos)
+            if chr == '/' {
                 beg := pos
                 for {
                     pos += 1; chr = byte(src, pos)
@@ -432,10 +436,7 @@ func scan() {
                 }
                 p_lit = string_sub(src, beg+1, pos-1)
                 p_comments[p_line] = p_lit
-                tok = "--"
-            } else if chr == 0x3D {
-                tok = "-="
-                pos += 1; chr = byte(src, pos)
+                tok = "//"
             }
         case "<":
             pos += 1; chr = byte(src, pos)
@@ -488,7 +489,7 @@ func scan() {
         default:
             pos += 1; chr = byte(src, pos)
         }
-        break if tok != "--"
+        break if tok != "//"
     }
     p_curpos, p_chr, p_tok = pos, chr, tok
     return p_tok
@@ -692,7 +693,7 @@ func parse_paren() {
 parse_table = func() {
     pos := p_tokpos
     list := List.[]
-    scan() -- skip "{" || ".{"
+    scan() // skip "{" || ".{"
     for p_tok != "}" {
         key_pos := p_tokpos
         left := nil
@@ -723,7 +724,7 @@ parse_table = func() {
 parse_list = func() {
     pos := p_tokpos
     list := List.[]
-    scan() -- skip "[" || ".["
+    scan() // skip "[" || ".["
     for p_tok != "]" {
         list[#list+1] = parse_expr()
         if p_tok != "," {
@@ -1209,7 +1210,7 @@ parse_func = func(lambda) {
         } else {
             assertf(!find_var(name), "re-declaring variable '%s'", name)
         }
-        p_vars[name] = {} -- hack for recursion
+        p_vars[name] = {} // hack for recursion
     }
     open_scope(vars)
     params := parse_params()
@@ -1306,7 +1307,7 @@ func parse_module(src, path, vars) {
     return module
 }
 
-v_res := {}
+v_res := []
 v_level := 0
 LUA_OPS := setmetatable({
     "!"  : "not ",
@@ -1857,14 +1858,14 @@ visit_stmt = func(node, skip_break) {
     case "nop":
         visit_nop(node)
     case "const":
-        -- skip
+        // skip
     default:
         errorf("unknown node type: %s", node[1])
     }
 }
 
 func visit_module(node, level) {
-    v_res = {}
+    v_res = []
     v_level = level || 0
     for _, v in ipairs(node[4]) {
         visit_stmt(v)
@@ -1880,7 +1881,12 @@ func visit_module(node, level) {
         r, m := pcall(parse_module, src, fn)
         if r {
             res := visit_module(m, 0)
-            io::open(fn .. ".lua", "w").write(res)
+            out := _G.arg[2]
+            if out {
+                io::open(out, "w").write(res)
+            } else {
+                io::open(fn .. ".lua", "w").write(res)
+            }
             print(os::clock())
         } else {
             print(m)
