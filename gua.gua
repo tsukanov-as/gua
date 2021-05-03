@@ -20,8 +20,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-_G::setfenv(1, {_G: _G})
-
 string_byte := _G.string.byte
 string_sub := _G.string.sub
 string_rep := _G.string.rep
@@ -250,8 +248,6 @@ func errorf(notef, ...) {
         error(string_format(notef, ...) .. " in line " .. p_line, 2)
     }
 }
-
-// _scan(...) ?
 
 func scan() {
     byte := string_byte
@@ -1828,7 +1824,9 @@ func emit_module(node, level) {
             if out {
                 io::open(out, "w").write(res)
             } else {
-                io::open(fn .. ".lua", "w").write(res)
+                f := io::open(fn .. ".lua", "w")
+                f.write(res)
+                f.close()
             }
             print(os::clock())
         } else {

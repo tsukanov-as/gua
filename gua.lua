@@ -1,6 +1,3 @@
-_G.setfenv(1, {
-    _G = _G;
-})
 local string_byte = _G.string.byte
 local string_sub = _G.string.sub
 local string_rep = _G.string.rep
@@ -1765,7 +1762,9 @@ do
             if out then
                 io.open(out, "w"):write(res)
             else
-                io.open(fn .. ".lua", "w"):write(res)
+                local f = io.open(fn .. ".lua", "w")
+                f:write(res)
+                f:close()
             end
             print(os.clock())
         else
