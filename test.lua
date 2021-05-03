@@ -15,7 +15,7 @@ local function test(name)
         return function(want)
             local res = gua.emit_module(m, 1)
             if res ~= want then
-                print("failed: " .. name .. "\nres:\n" .. res .. "\nast:\n" .. tostring(m))
+                error("failed: " .. name .. "\nres:\n" .. res .. "\nast:\n" .. tostring(m))
             end
         end
     end
