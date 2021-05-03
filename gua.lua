@@ -1063,7 +1063,7 @@ local function parse_return()
             scan()
         end
     end
-    if p_tok then
+    if p_tok and p_tok ~= "case" then
         expect("}")
     end
     return Node{"return", pos, p_endpos-pos, list}
