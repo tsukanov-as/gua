@@ -1816,7 +1816,7 @@ func emit_module(node, level) {
     fn := _G.arg[1]
     if fn {
         os, io, pcall, print := _G.os, _G.io, _G.pcall, _G.print
-        src := io::open(fn, "r").read("a")
+        src := io::open(fn, "r").read("*a")
         r, m := pcall(parse_module, src, fn)
         if r {
             res := emit_module(m, 0)

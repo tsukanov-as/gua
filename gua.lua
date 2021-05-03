@@ -1754,7 +1754,7 @@ do
     local fn = _G.arg[1]
     if fn then
         local os, io, pcall, print = _G.os, _G.io, _G.pcall, _G.print
-        local src = io.open(fn, "r"):read("a")
+        local src = io.open(fn, "r"):read("*a")
         local r, m = pcall(parse_module, src, fn)
         if r then
             local res = emit_module(m, 0)
