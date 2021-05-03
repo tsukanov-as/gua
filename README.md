@@ -1,6 +1,8 @@
 # gua
 go+lua=gua (experimental programming language)
 
+[![test](https://github.com/tsukanov-as/gua/actions/workflows/build.yml/badge.svg)](https://github.com/tsukanov-as/gua/actions/workflows/build.yml)
+
 transpiler from gua:
 ```go
 p := {
