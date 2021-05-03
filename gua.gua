@@ -184,35 +184,42 @@ MUL_OPS := Set.["*", "/", "%"]
 ADD_OPS := Set.["+", "-"]
 UNR_OPS := Set.["+", "-", "!", "#"]
 
-LF := 0x0A
-ALPHA := 1
-DIGIT := 2
-SPACE := 3
+const (
+    LF = 0x0A
+    ALPHA = 1
+    DIGIT = 2
+    SPACE = 3
+)
 
 MAP := {
-    [string_byte"\""]: "str",
-    [string_byte"'"]: "chr",
-    [string_byte"`"]: "raw",
+    '"': "str",
+    '\'': "chr",
+    '`': "raw",
 }
 HEX := {}
+ALPHA_OR_DIGIT := {}
 {
+    byte, sub := string_byte, string_sub
+
     sym := "()[]{}*:;.,/+-=<>#%|&!^"
     for i := 1, #sym {
-        MAP[string_byte(sym, i)] = string_sub(sym, i, i)
+        MAP[byte(sym, i)] = sub(sym, i, i)
     }
-    for i := 0x01, 0x20 {
+    for i := 0x1, ' ' {
         MAP[i] = SPACE
     }
     for i := '0', '9' {
-        MAP[i] = DIGIT
+        MAP[i] = DIGIT; ALPHA_OR_DIGIT[i] = true
     }
+
     abc := "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     for i := 1, #abc {
-        MAP[string_byte(abc, i)] = ALPHA
+        MAP[byte(abc, i)] = ALPHA; ALPHA_OR_DIGIT[byte(abc, i)] = true
     }
+
     hex := "ABCDEFabcdef0123456789"
     for i := 1, #hex {
-        HEX[string_byte(hex, i)] = true
+        HEX[byte(hex, i)] = true
     }
 }
 
@@ -246,101 +253,104 @@ func errorf(notef, ...) {
     }
 }
 
-func next() {
-    p_curpos = p_curpos + 1
-    p_chr = string_byte(p_src, p_curpos)
-    return p_chr
-}
+-- _scan(...) ?
 
 func scan() {
+    byte := string_byte
+    src := p_src
+    pos := p_curpos
+    chr := p_chr
+    tok := nil
     for {
-        p_tok = MAP[p_chr]
+        tok = MAP[chr]
         p_lit = ""
         p_val = nil
-        p_endpos = p_curpos
-        for p_tok == SPACE {
-            if p_chr == LF {
+        p_endpos = pos
+        for tok == SPACE {
+            if chr == LF {
                 p_line = p_line + 1
             }
-            p_tok = MAP[next()]
+            pos += 1; chr = byte(src, pos)
+            tok = MAP[chr]
         }
-        p_tokpos = p_curpos
-        if p_tok == ALPHA {
-            beg := p_curpos
+        p_tokpos = pos
+        switch tok {
+        case ALPHA:
+            AD := ALPHA_OR_DIGIT
+            beg := pos
             for {
-                p_tok = MAP[next()]
-                break if p_tok != ALPHA && p_tok != DIGIT
+                pos += 1; chr = byte(src, pos);
+                break if !AD[chr]
             }
-            p_lit = string_sub(p_src, beg, p_curpos-1)
-            p_tok = KEYWORDS[p_lit] || "id"
-            if p_tok == "true" {
+            p_lit = string_sub(src, beg, pos-1)
+            tok = KEYWORDS[p_lit] || "id"
+            if tok == "true" {
                 p_val = true
-            } else if p_tok == "false" {
+            } else if tok == "false" {
                 p_val = false
             }
-        } else if p_tok == DIGIT {
-            beg := p_curpos
+        case DIGIT:
+            beg := pos
             base := 10
-            if p_chr == 0x30 { -- 0
-                next()
-                if p_chr == 0x58 || p_chr == 0x78 { -- X, x
-                    next()
-                    beg = p_curpos
-                    if HEX[p_chr] == nil {
-                        errorf("expected hex digit, found '%c'", p_chr)
+            if chr == '0' {
+                pos += 1; chr = byte(src, pos)
+                switch chr {
+                case 'X', 'x':
+                    pos += 1; chr = byte(src, pos)
+                    beg = pos
+                    if !HEX[chr] {
+                        errorf("expected hex digit, found '%c'", chr)
                     }
                     for {
-                        next()
-                        break if !HEX[p_chr]
+                        pos += 1; chr = byte(src, pos)
+                        break if !HEX[chr]
                     }
                     base = 16
-                    if p_curpos-beg > 8 {
-                        errorf("integer greater than 32 bits", p_tok)
+                    if pos-beg > 8 {
+                        errorf("integer greater than 32 bits", tok)
                     }
-                } else if p_chr == 0x42 || p_chr == 0x62 { -- B, b
-                    next()
-                    beg = p_curpos
-                    if p_chr != 0x30 && p_chr != 0x31 {
-                        errorf("expected bin digit, found '%c'", p_chr)
+                case 'B', 'b':
+                    pos += 1; chr = byte(src, pos)
+                    beg = pos
+                    if chr != '0' && chr != '1' {
+                        errorf("expected bin digit, found '%c'", chr)
                     }
                     for {
-                        next()
-                        break if p_chr != 0x30 && p_chr != 0x31
+                        pos += 1; chr = byte(src, pos)
+                        break if chr != '0' && chr != '1'
                     }
                     base = 2
-                    if p_curpos-beg > 32 {
-                        errorf("integer greater than 32 bits", p_tok)
+                    if pos-beg > 32 {
+                        errorf("integer greater than 32 bits", tok)
                     }
                 }
             }
             if base == 10 {
-                p_tok = MAP[p_chr]
-                for p_tok == DIGIT {
-                    p_tok = MAP[next()]
+                for MAP[chr] == DIGIT {
+                    pos += 1; chr = byte(src, pos)
                 }
-                if p_chr == 0x2E { -- .
+                if chr == '.' {
                     for {
-                        p_tok = MAP[next()]
-                        break if p_tok != DIGIT
+                        pos += 1; chr = byte(src, pos)
+                        break if MAP[chr] != DIGIT
                     }
                 }
-                if p_chr == 0x45 || p_chr == 0x65 { -- E, e
-                    next()
-                    if p_chr == 0x2B || p_chr == 0x2D { -- +, -
-                        next()
+                if chr == 'E' || chr == 'e' {
+                    pos += 1; chr = byte(src, pos)
+                    if chr == '+' || chr == '-' {
+                        pos += 1; chr = byte(src, pos)
                     }
-                    p_tok = MAP[p_chr]
-                    if p_tok != DIGIT {
-                        errorf("expected digit, found '%s'", p_tok)
+                    if MAP[chr] != DIGIT {
+                        errorf("expected digit, found '%s'", tok)
                     }
                     for {
-                        p_tok = MAP[next()]
-                        break if p_tok != DIGIT
+                        pos += 1; chr = byte(src, pos)
+                        break if MAP[chr] != DIGIT
                     }
                 }
             }
-            p_tok = "num"
-            p_lit = string_sub(p_src, beg, p_curpos-1)
+            tok = "num"
+            p_lit = string_sub(src, beg, pos-1)
             if base == 10 {
                 p_val = tonumber(p_lit)
             } else {
@@ -349,138 +359,138 @@ func scan() {
             if p_val == nil {
                 errorf("malformed number '%s'", p_lit)
             }
-        } else if p_tok == "str" {
-            beg := p_curpos
+        case "str":
+            beg := pos
             for {
-                if next() == 0x5C { -- \
-                    next()
-                    next()
+                pos += 1; chr = byte(src, pos)
+                if chr == '\\' {
+                    pos += 2; chr = byte(src, pos)
                 }
-                break if p_chr == 0x22 || p_chr == LF || p_chr == nil
+                break if chr == '"' || chr == LF || chr == nil
             }
-            if p_chr != 0x22 {
+            if chr != '"' {
                 errorf("expected \", found EOL")
             }
-            p_lit = string_sub(p_src, beg+1, p_curpos-1)
+            p_lit = string_sub(src, beg+1, pos-1)
             p_val = p_lit
-            next()
-        } else if p_tok == "raw" {
-            beg := p_curpos
+            pos += 1; chr = byte(src, pos)
+        case "raw":
+            beg := pos
             for {
-                next()
-                if p_chr == LF {
+                pos += 1; chr = byte(src, pos)
+                if chr == LF {
                     p_line = p_line + 1
                 }
-                break if p_chr == 0x60 || p_chr == nil
+                break if chr == '`' || chr == nil
             }
-            if p_chr != 0x60 {
-                errorf("expected `, found '%c'", p_chr)
-            }
-            p_lit = string_sub(p_src, beg+1, p_curpos-1)
+            if chr != '`' { errorf("expected `, found '%c'", chr) }
+            p_lit = string_sub(src, beg+1, pos-1)
             p_val = Raw.[p_lit]
-            next()
-        } else if p_tok == "chr" {
-            beg := p_curpos
-            if next() == 0x5C { -- \
-                beg = p_curpos
-                next()
+            pos += 1; chr = byte(src, pos)
+        case "chr":
+            beg := pos
+            pos += 1; chr = byte(src, pos)
+            if chr == '\\' {
+                beg = pos
+                pos += 1; chr = byte(src, pos)
             }
-            next()
-            if p_chr != 0x27 {
-                errorf("expected ', found '%c'", p_chr)
+            pos += 1; chr = byte(src, pos)
+            if chr != '\'' {
+                errorf("expected ', found '%c'", chr)
             }
-            p_lit = string_sub(p_src, beg+1, p_curpos-1)
+            p_lit = string_sub(src, beg+1, pos-1)
             p_val = Hex.[string_byte(p_lit)]
-            next()
-        } else if p_tok == ":" {
-            next()
-            if p_chr == 0x3D {
-                p_tok = ":="
-                next()
-            } else if p_chr == 0x3A {
-                p_tok = "::"
-                next()
+            pos += 1; chr = byte(src, pos)
+        case ":":
+            pos += 1; chr = byte(src, pos)
+            if chr == '=' {
+                tok = ":="
+                pos += 1; chr = byte(src, pos)
+            } else if chr == ':' {
+                tok = "::"
+                pos += 1; chr = byte(src, pos)
             }
-        } else if p_tok == "=" {
-            next()
-            if p_chr == 0x3D {
-                p_tok = "=="
-                next()
+        case "=":
+            pos += 1; chr = byte(src, pos)
+            if chr == '=' {
+                tok = "=="
+                pos += 1; chr = byte(src, pos)
             }
-        } else if p_tok == "+" {
-            next()
-            if p_chr == 0x3D {
-                p_tok = "+="
-                next()
+        case "+":
+            pos += 1; chr = byte(src, pos)
+            if chr == '=' {
+                tok = "+="
+                pos += 1; chr = byte(src, pos)
             }
-        } else if p_tok == "-" {
-            next()
-            if p_chr == 0x2D {
-                beg := p_curpos
+        case "-":
+            pos += 1; chr = byte(src, pos)
+            if chr == '-' {
+                beg := pos
                 for {
-                    next()
-                    break if p_chr == LF || p_chr == nil
+                    pos += 1; chr = byte(src, pos)
+                    break if chr == LF || chr == nil
                 }
-                p_lit = string_sub(p_src, beg+1, p_curpos-1)
+                p_lit = string_sub(src, beg+1, pos-1)
                 p_comments[p_line] = p_lit
-                p_tok = "--"
-            } else if p_chr == 0x3D {
-                p_tok = "-="
-                next()
+                tok = "--"
+            } else if chr == 0x3D {
+                tok = "-="
+                pos += 1; chr = byte(src, pos)
             }
-        } else if p_tok == "<" {
-            next()
-            if p_chr == 0x3D {
-                p_tok = "<="
-                next()
+        case "<":
+            pos += 1; chr = byte(src, pos)
+            if chr == '=' {
+                tok = "<="
+                pos += 1; chr = byte(src, pos)
             }
-        } else if p_tok == ">" {
-            next()
-            if p_chr == 0x3D {
-                p_tok = ">="
-                next()
+        case ">":
+            pos += 1; chr = byte(src, pos)
+            if chr == '=' {
+                tok = ">="
+                pos += 1; chr = byte(src, pos)
             }
-        } else if p_tok == "&" {
-            next()
-            if p_chr == 0x26 {
-                p_tok = "&&"
-                next()
+        case "&":
+            pos += 1; chr = byte(src, pos)
+            if chr == '&' {
+                tok = "&&"
+                pos += 1; chr = byte(src, pos)
             }
-        } else if p_tok == "|" {
-            next()
-            if p_chr == 0x7C {
-                p_tok = "||"
-                next()
+        case "|":
+            pos += 1; chr = byte(src, pos)
+            if chr == '|' {
+                tok = "||"
+                pos += 1; chr = byte(src, pos)
             }
-        } else if p_tok == "!" {
-            next()
-            if p_chr == 0x3D {
-                p_tok = "!="
-                next()
+        case "!":
+            pos += 1; chr = byte(src, pos)
+            if chr == '=' {
+                tok = "!="
+                pos += 1; chr = byte(src, pos)
             }
-        } else if p_tok == "." {
-            next()
-            if p_chr == 0x2E {
-                p_tok = ".."
-                next()
-                if p_chr == 0x2E {
-                    p_tok = "..."
-                    next()
+        case ".":
+            pos += 1; chr = byte(src, pos)
+            if chr == '.' {
+                tok = ".."
+                pos += 1; chr = byte(src, pos)
+                if chr == '.' {
+                    tok = "..."
+                    pos += 1; chr = byte(src, pos)
                 }
-            } else if p_chr == 0x5B {
-                p_tok = ".["
-                next()
-            } else if p_chr == 0x7B {
-                p_tok = ".{"
-                next()
+            } else if chr == '[' {
+                tok = ".["
+                pos += 1; chr = byte(src, pos)
+            } else if chr == '{' {
+                tok = ".{"
+                pos += 1; chr = byte(src, pos)
             }
-        } else if p_tok == nil && p_chr != nil {
-            errorf("unknown symbol '%c'", p_chr)
-        } else {
-            next()
+        case nil; chr != nil:
+            errorf("unknown symbol '%c'", chr)
+        default:
+            pos += 1; chr = byte(src, pos)
         }
-        break if p_tok != "--"
+        break if tok != "--"
     }
+    p_curpos, p_chr, p_tok = pos, chr, tok
     return p_tok
 }
 
@@ -507,12 +517,12 @@ func skip(t) {
 
 func open_scope(vars) {
     p_vars = vars || {}
-    p_level = p_level + 1
+    p_level += 1
     p_scope[p_level] = p_vars
 }
 
 func close_scope() {
-    p_level = p_level - 1
+    p_level -= 1
     p_vars = p_scope[p_level]
 }
 
@@ -520,13 +530,13 @@ func find_var(name) {
     if name == "_" {
         return nil
     }
-    var := p_vars[name]
+    v := p_vars[name]
     i := p_level
-    for var == nil && i > 1 {
-        i = i - 1
-        var = p_scope[i][name]
+    for v == nil && i > 1 {
+        i -= 1
+        v = p_scope[i][name]
     }
-    return var, i
+    return v, i
 }
 
 func assertf(expr, notef, ...) {
@@ -548,7 +558,8 @@ func parse_tail(call) {
     for true {
         pos := p_tokpos
         dot := (p_tok == ".")
-        if dot || p_tok == "::" {
+        switch p_tok {
+        case ".", "::":
             scan()
             if KEYWORDS[p_lit] == nil {
                 expect("id")
@@ -558,7 +569,8 @@ func parse_tail(call) {
             paren := false
             last := p_tokpos
             scan()
-            if p_tok == "(" {
+            switch p_tok {
+            case "(":
                 scan()
                 args = List.[]
                 for p_tok != ")" {
@@ -572,44 +584,44 @@ func parse_tail(call) {
                 skip(")")
                 call = true
                 paren = true
-            } else if p_tok == "str" {
+            case "str":
                 args = List.[Node.["value", p_tokpos, p_endpos-pos, p_val]]
                 last = p_tokpos
                 scan()
                 call = true
-            } else if p_tok == "chr" {
+            case "chr":
                 args = List.[Node.["value", p_tokpos, p_endpos-pos, p_val]]
                 last = p_tokpos
                 scan()
                 call = true
                 paren = true
-            } else if p_tok == ".{" {
+            case ".{":
                 args = List.[parse_table()]
                 last = p_tokpos
                 scan()
                 call = true
-            } else if p_tok == ".[" {
+            case ".[":
                 args = List.[parse_list()]
                 last = p_tokpos
                 scan()
                 call = true
-            } else {
+            default:
                 call = false
             }
             if args && dot && (KEYWORDS[name] || RESERVED[name]) {
                 errorf("name '%s' cannot be used in a method call", name)
             }
             item := Node.["field", pos, last - pos, args || false, name, dot, paren]
-            i = i + 1
+            i += 1
             tail[i] = item
-        } else if p_tok == "[" {
+        case "[":
             scan()
             assertf(p_tok != "]", "expected expression, found ']'")
             expr := parse_expr()
             skip("]")
-            i = i + 1
+            i += 1
             tail[i] = Node.["index", pos, p_endpos-pos, expr]
-        } else {
+        default:
             break
         }
     }
@@ -633,7 +645,8 @@ func parse_id() {
     args, tail := false, false
     scan()
     if !_const {
-        if p_tok == "(" {
+        switch p_tok {
+        case "(":
             scan()
             args = List.[]
             for p_tok != ")" {
@@ -646,19 +659,19 @@ func parse_id() {
             skip(")")
             call = true
             paren = true
-        } else if p_tok == "str" {
+        case "str":
             args = List.[Node.["value", p_tokpos, p_endpos-pos, p_val]]
             scan()
             call = true
-        } else if p_tok == "chr" {
+        case "chr":
             args = List.[Node.["value", p_tokpos, p_endpos-pos, p_val]]
             scan()
             call = true
             paren = true
-        } else if p_tok == ".{" {
+        case ".{":
             args = List.[parse_table()]
             call = true
-        } else if p_tok == ".[" {
+        case ".[":
             args = List.[parse_list()]
             call = true
         }
@@ -726,29 +739,32 @@ parse_func := nil
 
 func parse_operand() {
     node := nil
-    if p_tok == "str" {
+    switch p_tok {
+    case "str":
         pos, len, val := p_tokpos, #p_lit, p_val
         scan()
         tail := parse_tail()
         node = Node.["value", pos, len, val, tail]
-    } else if LITERALS[p_tok] {
-        node = Node.["value", p_tokpos, #p_lit, p_val]
-        scan()
-    } else if p_tok == "id" {
+    case "id":
         node = parse_id()
-    } else if p_tok == "(" {
+    case "(":
         node = parse_paren()
-    } else if p_tok == "{" {
+    case "{":
         node = parse_table()
-    } else if p_tok == "[" {
+    case "[":
         node = parse_list()
-    } else if p_tok == "func" {
+    case "func":
         node = parse_func(true)
-    } else if p_tok == "..." {
+    case "...":
         node = Node.["vararg", p_tokpos, 3]
         scan()
-    } else {
-        errorf("expected operand, found '%s'", p_tok)
+    default:
+        if LITERALS[p_tok] {
+            node = Node.["value", p_tokpos, #p_lit, p_val]
+            scan()
+        } else {
+            errorf("expected operand, found '%s'", p_tok)
+        }
     }
     return node
 }
@@ -904,17 +920,17 @@ func parse_set_or_call() {
             assertf(!_id[5], "unexpected tail")
             assertf(!_id[6], "unexpected call")
             assertf(!_id[7], "unexpected self")
-            var, level := find_var(_id[4])
-            if !var {
+            v, level := find_var(_id[4])
+            if !v {
                 allow = true
-            } else if level != p_level || var[7] {
+            } else if level != p_level || v[7] {
                 errorf("variable shadowing is prohibited, you need to change the name '%s'", p_skipped_id_name)
             }
         }
         assertf(allow, "no new variables on left side of ':='")
         scan()
         right := List.[]
-        for true {
+        for {
             right[#right+1] = parse_expr()
             if p_tok != "," {
                 break
@@ -996,7 +1012,7 @@ func parse_switch() {
 
 func parse_for() {
     pos := p_tokpos
-    p_looplevel = p_looplevel + 1
+    p_looplevel += 1
     skip("for")
     if p_tok == "{" {
         body := parse_block(nil, true)
@@ -1059,7 +1075,7 @@ func parse_return() {
     skip("return")
     list := List.[]
     if p_tok != "}" {
-        for true {
+        for {
             list[#list+1] = parse_expr()
             if p_tok != "," {
                 break
@@ -1067,7 +1083,7 @@ func parse_return() {
             scan()
         }
     }
-    if p_tok {
+    if p_tok && p_tok != "case" {
         expect("}")
     }
     return Node.["return", pos, p_endpos-pos, list]
@@ -1207,27 +1223,28 @@ parse_func = func(lambda) {
 }
 
 func parse_statement() {
-    if p_tok == "id" {
+    switch p_tok {
+    case "id":
         return parse_set_or_call()
-    } else if p_tok == "func" {
+    case "func":
         return parse_func()
-    } else if p_tok == "if" {
+    case "if":
         return parse_if()
-    } else if p_tok == "{" {
+    case "{":
         return parse_block()
-    } else if p_tok == "for" {
+    case "for":
         return parse_for()
-    } else if p_tok == "return" {
+    case "return":
         return parse_return()
-    } else if p_tok == "break" {
+    case "break":
         return parse_break()
-    } else if p_tok == "continue" {
+    case "continue":
         return parse_continue()
-    } else if p_tok == "switch" {
+    case "switch":
         return parse_switch()
-    } else if p_tok == "const" {
+    case "const":
         return parse_const()
-    } else if p_tok == ";" {
+    case ";":
         scan()
         return Node.["nop", p_curpos, 1]
     }
@@ -1278,7 +1295,7 @@ func parse_module(src, path, vars) {
     p_scope = List.[p_vars]
     p_continue = List.[]
     p_looplevel = 0
-    next()
+    p_curpos += 1; p_chr = string_byte(p_src, p_curpos)
     scan()
     pos := p_tokpos
     body := parse_body(vars)
@@ -1306,6 +1323,10 @@ func space() {
     return string_rep("    ", v_level)
 }
 
+func add(s) {
+    v_res[#v_res+1] = s
+}
+
 visit_expr := nil
 
 func visit_field(node) {
@@ -1314,40 +1335,40 @@ func visit_field(node) {
     name := node[5]
     if args {
         if node[6] {
-            v_res[#v_res+1] = ":" .. name
+            add(":" .. name)
         } else {
             if KEYWORDS[name] || RESERVED[name] {
-                v_res[#v_res+1] = "[\"" .. name .. "\"]"
+                add("[\"" .. name .. "\"]")
             } else {
-                v_res[#v_res+1] = "." .. name
+                add("." .. name)
             }
         }
         if paren {
-            v_res[#v_res+1] = "("
+            add("(")
         }
         if #args > 0 {
             for _, v in ipairs(args) {
                 visit_expr(v)
-                v_res[#v_res+1] = ", "
+                add(", ")
             }
             v_res[#v_res] = ""
         }
         if paren {
-            v_res[#v_res+1] = ")"
+            add(")")
         }
     } else {
         if KEYWORDS[name] || RESERVED[name] {
-            v_res[#v_res+1] = "[\"" .. name .. "\"]"
+            add("[\"" .. name .. "\"]")
         } else {
-            v_res[#v_res+1] = "." .. name
+            add("." .. name)
         }
     }
 }
 
 func visit_index(node) {
-    v_res[#v_res+1] = "["
+    add("[")
     visit_expr(node[4])
-    v_res[#v_res+1] = "]"
+    add("]")
 }
 
 func visit_value(node) {
@@ -1355,7 +1376,7 @@ func visit_value(node) {
     if type(v) == "string" {
         tail := node[5]
         if tail {
-            v_res[#v_res+1] = "(\"" .. v .. "\")"
+            add("(\"" .. v .. "\")")
             for _, _v in ipairs(tail) {
                 if _v[1] == "field" {
                     visit_field(_v)
@@ -1364,10 +1385,10 @@ func visit_value(node) {
                 }
             }
         } else {
-            v_res[#v_res+1] = "\"" .. v .. "\""
+            add("\"" .. v .. "\"")
         }
     } else {
-        v_res[#v_res+1] = tostring(v)
+        add(tostring(v))
     }
 }
 
@@ -1377,20 +1398,20 @@ func visit_id(node) {
         visit_value(_const)
         return
     }
-    v_res[#v_res+1] = node[4]
+    add(node[4])
     if args {
         if paren {
-            v_res[#v_res+1] = "("
+            add("(")
         }
         if #args > 0 {
             for _, v in ipairs(args) {
                 visit_expr(v)
-                v_res[#v_res+1] = ", "
+                add(", ")
             }
             v_res[#v_res] = ""
         }
         if paren {
-            v_res[#v_res+1] = ")"
+            add(")")
         }
     }
     if tail {
@@ -1409,112 +1430,112 @@ func visit_pair(node) {
     if key[1] == "id" && !key[5] && !key[6] {
         name := key[4]
         if KEYWORDS[name] || RESERVED[name] {
-            v_res[#v_res+1] = "[\""
+            add("[\"")
             visit_expr(key)
-            v_res[#v_res+1] = "\"]"
+            add("\"]")
         } else {
             visit_expr(key)
         }
     } else if key[1] == "index" {
         visit_index(key)
     } else {
-        v_res[#v_res+1] = "["
+        add("[")
         visit_expr(key)
-        v_res[#v_res+1] = "]"
+        add("]")
     }
-    v_res[#v_res+1] = " = "
+    add(" = ")
     visit_expr(node[5])
 }
 
 func visit_table(node) {
     if #node[4] == 0 {
-        v_res[#v_res+1] = "{}"
+        add("{}")
         return
     }
-    v_res[#v_res+1] = "{\n"
-    v_level = v_level + 1
+    add("{\n")
+    v_level += 1
     for _, v in ipairs(node[4]) {
-        v_res[#v_res+1] = space()
+        add(space())
         if v[1] == "pair" {
             visit_pair(v)
-            v_res[#v_res+1] = ";\n"
+            add(";\n")
         } else {
             visit_expr(v)
-            v_res[#v_res+1] = ",\n"
+            add(",\n")
         }
     }
-    v_level = v_level - 1
-    v_res[#v_res+1] = space() .. "}"
+    v_level -= 1
+    add(space() .. "}")
 }
 
 func visit_list(node) {
-    v_res[#v_res+1] = "{"
+    add("{")
     list := node[4]
     if #list > 0 {
         for _, v in ipairs(list) {
             visit_expr(v)
-            v_res[#v_res+1] = ", "
+            add(", ")
         }
         v_res[#v_res] = ""
     }
-    v_res[#v_res+1] = "}"
+    add("}")
 }
 
 func visit_paren(node) {
-    v_res[#v_res+1] = "("
+    add("(")
     visit_expr(node[4])
-    v_res[#v_res+1] = ")"
+    add(")")
 }
 
 func visit_unop(node) {
     op := LUA_OPS[node[4]]
     if op != "+" {
-        v_res[#v_res+1] = LUA_OPS[node[4]]
+        add(LUA_OPS[node[4]])
     }
     visit_expr(node[5])
 }
 
 func visit_binop(node) {
     visit_expr(node[4])
-    v_res[#v_res+1] = " " .. LUA_OPS[node[5]] .. " "
+    add(" " .. LUA_OPS[node[5]] .. " ")
     visit_expr(node[6])
 }
 
 visit_func := nil
 
 visit_expr = func(node) {
-    t := node[1]
-    if t == "id" {
+    switch node[1] {
+    case "id":
         visit_id(node)
-    } else if t == "binop" {
+    case "binop":
         visit_binop(node)
-    } else if t == "unop" {
+    case "unop":
         visit_unop(node)
-    } else if t == "paren" {
+    case "paren":
         visit_paren(node)
-    } else if t == "value" {
+    case "value":
         visit_value(node)
-    } else if t == "table" {
+    case "table":
         visit_table(node)
-    } else if t == "list" {
+    case "list":
         visit_list(node)
-    } else if t == "func" {
+    case "func":
         visit_func(node, true)
-    } else if t == "vararg" {
-        v_res[#v_res+1] = "..."
-    } else {
-        errorf("unknown node type: '%s'", t)
+    case "vararg":
+        add("...")
+    default:
+        errorf("unknown node type: '%s'", node[1])
     }
 }
 
 visit_stmt := nil
 
 func visit_body(node, skip_break) {
-    v_level = v_level + 1
+    v_level += 1
     for _, v in ipairs(node) {
         visit_stmt(v, skip_break)
     }
-    v_level = v_level - 1
+    v_level -= 1
 }
 
 func visit_block(node, skip_break) {
@@ -1522,145 +1543,145 @@ func visit_block(node, skip_break) {
 }
 
 func visit_call(node) {
-    v_res[#v_res+1] = space()
+    add(space())
     visit_id(node[4])
-    v_res[#v_res+1] = "\n"
+    add("\n")
 }
 
 func visit_set(node) {
-    v_res[#v_res+1] = space()
+    add(space())
     for _, v in ipairs(node[4]) {
         visit_id(v)
-        v_res[#v_res+1] = ", "
+        add(", ")
     }
     v_res[#v_res] = " = "
     for _, v in ipairs(node[5]) {
         visit_expr(v)
-        v_res[#v_res+1] = ", "
+        add(", ")
     }
     v_res[#v_res] = "\n"
 }
 
 func visit_inc(node) {
-    v_res[#v_res+1] = space()
+    add(space())
     visit_id(node[4])
-    v_res[#v_res+1] = " = "
+    add(" = ")
     visit_id(node[4])
-    v_res[#v_res+1] = " + "
+    add(" + ")
     visit_expr(node[5])
-    v_res[#v_res+1] = "\n"
+    add("\n")
 }
 
 func visit_dec(node) {
-    v_res[#v_res+1] = space()
+    add(space())
     visit_id(node[4])
-    v_res[#v_res+1] = " = "
+    add(" = ")
     visit_id(node[4])
-    v_res[#v_res+1] = " - "
+    add(" - ")
     visit_expr(node[5])
-    v_res[#v_res+1] = "\n"
+    add("\n")
 }
 
 func visit_let(node) {
-    v_res[#v_res+1] = space() .. "local "
+    add(space() .. "local ")
     for _, v in ipairs(node[4]) {
         visit_id(v)
-        v_res[#v_res+1] = ", "
+        add(", ")
     }
     v_res[#v_res] = " = "
     for _, v in ipairs(node[5]) {
         visit_expr(v)
-        v_res[#v_res+1] = ", "
+        add(", ")
     }
     v_res[#v_res] = "\n"
 }
 
 func visit_if(node) {
-    v_res[#v_res+1] = space() .. "if "
+    add(space() .. "if ")
     visit_expr(node[4])
-    v_res[#v_res+1] = " then\n"
+    add(" then\n")
     visit_block(node[5])
     _else := node[6]
     for _else {
-        v_res[#v_res+1] = space() .. "else"
+        add(space() .. "else")
         if _else[1] == "if" {
-            v_res[#v_res+1] = "if "
+            add("if ")
             visit_expr(_else[4])
-            v_res[#v_res+1] = " then\n"
+            add(" then\n")
             visit_block(_else[5])
             _else = _else[6]
         } else {
-            v_res[#v_res+1] = "\n"
+            add("\n")
             visit_block(_else)
             _else = nil
         }
     }
-    v_res[#v_res+1] = space() .. "end\n"
+    add(space() .. "end\n")
 }
 
 func visit_switch(node) {
     expr := node[4]
     if expr {
-        v_res[#v_res+1] = space() .. "do\n"
-        v_level = v_level + 1
-        v_res[#v_res+1] = space() .. "local case = "
+        add(space() .. "do\n")
+        v_level += 1
+        add(space() .. "local case = ")
         visit_expr(expr)
-        v_res[#v_res+1] = "\n" .. space()
+        add("\n" .. space())
         for _, _case in ipairs(node[5]) {
-            v_res[#v_res+1] = "if "
+            add("if ")
             case_exp := _case[5]
             if case_exp {
-                v_res[#v_res+1] = "("
+                add("(")
             }
             for _, item in ipairs(_case[4]) {
-                v_res[#v_res+1] = "case == "
+                add("case == ")
                 if item[1] == "binop" {
-                    v_res[#v_res+1] = "("
+                    add("(")
                     visit_expr(item)
-                    v_res[#v_res+1] = ")"
+                    add(")")
                 } else {
                     visit_expr(item)
                 }
-                v_res[#v_res+1] = " or "
+                add(" or ")
             }
             if case_exp {
                 v_res[#v_res] = ") and ("
                 visit_expr(case_exp)
-                v_res[#v_res+1] = ")"
+                add(")")
             } else {
                 v_res[#v_res] = ""
             }
-            v_res[#v_res+1] = " then\n"
+            add(" then\n")
             visit_body(_case[6])
-            v_res[#v_res+1] = space() .. "else"
+            add(space() .. "else")
         }
         _default := node[6]
         if _default {
-            v_res[#v_res+1] = "\n"
+            add("\n")
             visit_body(_default)
         } else {
             v_res[#v_res] = ""
         }
-        v_res[#v_res+1] = space() .. "end\n"
-        v_level = v_level - 1
-        v_res[#v_res+1] = space() .. "end\n"
+        add(space() .. "end\n")
+        v_level -= 1
+        add(space() .. "end\n")
     } else {
-        v_res[#v_res+1] = space()
+        add(space())
         for _, _case in ipairs(node[5]) {
-            v_res[#v_res+1] = "if "
+            add("if ")
             visit_expr(_case[5])
-            v_res[#v_res+1] = " then\n"
+            add(" then\n")
             visit_body(_case[6])
-            v_res[#v_res+1] = space() .. "else"
+            add(space() .. "else")
         }
         _default := node[6]
         if _default {
-            v_res[#v_res+1] = "\n"
+            add("\n")
             visit_body(_default)
         } else {
             v_res[#v_res] = ""
         }
-        v_res[#v_res+1] = space() .. "end\n"
+        add(space() .. "end\n")
     }
 }
 
@@ -1673,94 +1694,94 @@ func visit_for(node) {
         if last[1] == "break" {
             break_expr := last[4]
             if break_expr {
-                v_res[#v_res+1] = space() .. "repeat\n"
+                add(space() .. "repeat\n")
                 visit_block(block, true)
-                v_res[#v_res+1] = space() .. "until "
+                add(space() .. "until ")
                 visit_expr(break_expr)
-                v_res[#v_res+1] = "\n"
+                add("\n")
                 return
             }
         }
     }
-    v_res[#v_res+1] = space() .. "while "
+    add(space() .. "while ")
     if expr {
         visit_expr(expr)
     } else {
-        v_res[#v_res+1] = "true"
+        add("true")
     }
-    v_res[#v_res+1] = " do\n"
+    add(" do\n")
     visit_block(block)
-    v_res[#v_res+1] = space() .. "end\n"
+    add(space() .. "end\n")
 }
 
 func visit_for_to(node) {
-    v_res[#v_res+1] = space() .. "for "
+    add(space() .. "for ")
     visit_id(node[4])
-    v_res[#v_res+1] = " = "
+    add(" = ")
     visit_expr(node[5])
-    v_res[#v_res+1] = ", "
+    add(", ")
     visit_expr(node[6])
     step := node[7]
     if step {
-        v_res[#v_res+1] = ", "
+        add(", ")
         visit_expr(step)
     }
-    v_res[#v_res+1] = " do\n"
+    add(" do\n")
     visit_block(node[8])
-    v_res[#v_res+1] = space() .. "end\n"
+    add(space() .. "end\n")
 }
 
 func visit_for_in(node) {
-    v_res[#v_res+1] = space() .. "for "
+    add(space() .. "for ")
     for _, v in ipairs(node[4]) {
         visit_id(v)
-        v_res[#v_res+1] = ", "
+        add(", ")
     }
     v_res[#v_res] = " in "
     for _, v in ipairs(node[5]) {
         visit_expr(v)
-        v_res[#v_res+1] = ", "
+        add(", ")
     }
     v_res[#v_res] = " do\n"
     visit_block(node[6])
-    v_res[#v_res+1] = space() .. "end\n"
+    add(space() .. "end\n")
 }
 
 func visit_return(node) {
     list := node[4]
-    v_res[#v_res+1] = space() .. "return"
+    add(space() .. "return")
     if list {
-        v_res[#v_res+1] = " "
+        add(" ")
         for _, v in ipairs(list) {
             visit_expr(v)
-            v_res[#v_res+1] = ", "
+            add(", ")
         }
         v_res[#v_res] = ""
     }
-    v_res[#v_res+1] = "\n"
+    add("\n")
 }
 
 func visit_break(node) {
     expr := node[4]
     if expr {
-        v_res[#v_res+1] = space() .. "if "
+        add(space() .. "if ")
         visit_expr(expr)
-        v_res[#v_res+1] = " then\n"
+        add(" then\n")
         v_level = v_level + 1
-        v_res[#v_res+1] = space() .. "break\n"
+        add(space() .. "break\n")
         v_level = v_level - 1
-        v_res[#v_res+1] = space() .. "end\n"
+        add(space() .. "end\n")
     } else {
-        v_res[#v_res+1] = space() .. "break\n"
+        add(space() .. "break\n")
     }
 }
 
 func visit_continue(node) {
-    v_res[#v_res+1] = space() .. "goto continue\n"
+    add(space() .. "goto continue\n")
 }
 
 func visit_label(node) {
-    v_res[#v_res+1] = space() .. "::" .. node[4] .. "::\n"
+    add(space() .. "::" .. node[4] .. "::\n")
 }
 
 func visit_params(node) {
@@ -1768,26 +1789,26 @@ func visit_params(node) {
     for _, v in ipairs(node[4]) {
         t[#t+1] = v[4]
     }
-    v_res[#v_res+1] = "("..table_concat(t, ", ")..")\n"
+    add("("..table_concat(t, ", ")..")\n")
 }
 
 visit_func = func(node, lambda) {
     if lambda {
-        v_res[#v_res+1] = "function"
+        add("function")
     } else if node[7] {
         if node[8] {
-            v_res[#v_res+1] = space() .. "function " .. node[7] .. ":" .. node[4]
+            add(space() .. "function " .. node[7] .. ":" .. node[4])
         } else {
-            v_res[#v_res+1] = space() .. "function " .. node[7] .. "." .. node[4]
+            add(space() .. "function " .. node[7] .. "." .. node[4])
         }
     } else {
-        v_res[#v_res+1] = space() .. "local function " .. node[4]
+        add(space() .. "local function " .. node[4])
     }
     visit_params(node[5])
     visit_block(node[6])
-    v_res[#v_res+1] = space() .. "end"
+    add(space() .. "end")
     if !lambda {
-        v_res[#v_res+1] = "\n"
+        add("\n")
     }
 }
 
@@ -1796,49 +1817,49 @@ func visit_nop(node) {
 }
 
 visit_stmt = func(node, skip_break) {
-    t := node[1]
-    if t == "call" {
+    switch node[1] {
+    case "call":
         visit_call(node)
-    } else if t == "set" {
+    case "set":
         visit_set(node)
-    } else if t == "inc" {
+    case "inc":
         visit_inc(node)
-    } else if t == "dec" {
+    case "dec":
         visit_dec(node)
-    } else if t == "let" {
+    case "let":
         visit_let(node)
-    } else if t == "if" {
+    case "if":
         visit_if(node)
-    } else if t == "switch" {
+    case "switch":
         visit_switch(node)
-    } else if t == "block" {
-        v_res[#v_res+1] = space() .. "do\n"
+    case "block":
+        add(space() .. "do\n")
         visit_block(node)
-        v_res[#v_res+1] = space() .. "end\n"
-    } else if t == "for" {
+        add(space() .. "end\n")
+    case "for":
         visit_for(node)
-    } else if t == "for_to" {
+    case "for_to":
         visit_for_to(node)
-    } else if t == "for_in" {
+    case "for_in":
         visit_for_in(node)
-    } else if t == "return" {
+    case "return":
         visit_return(node)
-    } else if t == "break" {
+    case "break":
         if !skip_break {
             visit_break(node)
         }
-    } else if t == "continue" {
+    case "continue":
         visit_continue(node)
-    } else if t == "label" {
+    case "label":
         visit_label(node)
-    } else if t == "func" {
+    case "func":
         visit_func(node)
-    } else if t == "nop" {
+    case "nop":
         visit_nop(node)
-    } else if t == "const" {
+    case "const":
         -- skip
-    } else {
-        errorf("unknown node type: %s", t)
+    default:
+        errorf("unknown node type: %s", node[1])
     }
 }
 
