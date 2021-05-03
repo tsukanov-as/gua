@@ -48,13 +48,13 @@ Type := {
 }
 setmetatable(Type, Type)
 
-Hex := Type.{
+Hex := Type({
     __tostring: func(t) {
         return string_format("0x%02X", t[1])
     },
-}
+})
 
-Raw := Type.{
+Raw := Type({
     __tostring: func(t) {
         s := t[1]
         i := 0
@@ -69,9 +69,9 @@ Raw := Type.{
         }
         return string_format(" [%s[%s]%s]", x, s, x)
     },
-}
+})
 
-List := Type.{
+List := Type({
     __tostring: func(t) {
         res := {}
         for i, v in ipairs(t) {
@@ -83,9 +83,9 @@ List := Type.{
         }
         return "{" .. table_concat(res, ", ") .. "}"
     },
-}
+})
 
-Set := Type.{
+Set := Type({
     __tostring: func(t) {
         res := {}
         for k in pairs(t) {
@@ -105,9 +105,9 @@ Set := Type.{
         }
         return set
     },
-}
+})
 
-Fields := Type.{
+Fields := Type({
     __tostring: func(t) {
         res := {}
         for i, v in ipairs(t) {
@@ -124,45 +124,45 @@ Fields := Type.{
         }
         return fields
     },
-}
+})
 
 nodes := {
-    "module"   : Fields.["Type", "Pos", "Len", "Body", "Comments"],
-    "value"    : Fields.["Type", "Pos", "Len", "Value"],
-    "field"    : Fields.["Type", "Pos", "Len", "Args", "Name", "Dot", "Paren"],
-    "index"    : Fields.["Type", "Pos", "Len", "Expr"],
-    "id"       : Fields.["Type", "Pos", "Len", "Name", "Tail", "Args", "Const", "Paren"],
-    "table"    : Fields.["Type", "Pos", "Len", "List"],
-    "pair"     : Fields.["Type", "Pos", "Len", "Left", "Right"],
-    "list"     : Fields.["Type", "Pos", "Len", "List"],
-    "paren"    : Fields.["Type", "Pos", "Len", "Expr"],
-    "unop"     : Fields.["Type", "Pos", "Len", "Op", "Expr"],
-    "binop"    : Fields.["Type", "Pos", "Len", "Left", "Op", "Right"],
-    "call"     : Fields.["Type", "Pos", "Len", "ID"],
-    "set"      : Fields.["Type", "Pos", "Len", "Left", "Right"],
-    "let"      : Fields.["Type", "Pos", "Len", "Left", "Right"],
-    "inc"      : Fields.["Type", "Pos", "Len", "ID", "Expr"],
-    "dec"      : Fields.["Type", "Pos", "Len", "ID", "Expr"],
-    "if"       : Fields.["Type", "Pos", "Len", "Expr", "Then", "Else"],
-    "block"    : Fields.["Type", "Pos", "Len", "Body"],
-    "for"      : Fields.["Type", "Pos", "Len", "Expr", "Body"],
-    "for_to"   : Fields.["Type", "Pos", "Len", "ID", "From", "Limit", "Step", "Body"],
-    "for_in"   : Fields.["Type", "Pos", "Len", "IDs", "INs", "Body"],
-    "return"   : Fields.["Type", "Pos", "Len", "List"],
-    "break"    : Fields.["Type", "Pos", "Len", "Expr"],
-    "continue" : Fields.["Type", "Pos", "Len"],
-    "label"    : Fields.["Type", "Pos", "Len", "Name"],
-    "func"     : Fields.["Type", "Pos", "Len", "Name", "Params", "Body", "Receiver", "Dot"],
-    "nop"      : Fields.["Type", "Pos", "Len"],
-    "vararg"   : Fields.["Type", "Pos", "Len"],
-    "param"    : Fields.["Type", "Pos", "Len", "Name"],
-    "params"   : Fields.["Type", "Pos", "Len", "List"],
-    "switch"   : Fields.["Type", "Pos", "Len", "Expr", "Cases", "Default"],
-    "case"     : Fields.["Type", "Pos", "Len", "List", "Expr", "Body"],
-    "const"    : Fields.["Type", "Pos", "Len", "List"],
+    "module"   : Fields(["Type", "Pos", "Len", "Body", "Comments"]),
+    "value"    : Fields(["Type", "Pos", "Len", "Value"]),
+    "field"    : Fields(["Type", "Pos", "Len", "Args", "Name", "Dot"]),
+    "index"    : Fields(["Type", "Pos", "Len", "Expr"]),
+    "id"       : Fields(["Type", "Pos", "Len", "Name", "Tail", "Args", "Const"]),
+    "table"    : Fields(["Type", "Pos", "Len", "List"]),
+    "pair"     : Fields(["Type", "Pos", "Len", "Left", "Right"]),
+    "list"     : Fields(["Type", "Pos", "Len", "List"]),
+    "paren"    : Fields(["Type", "Pos", "Len", "Expr"]),
+    "unop"     : Fields(["Type", "Pos", "Len", "Op", "Expr"]),
+    "binop"    : Fields(["Type", "Pos", "Len", "Left", "Op", "Right"]),
+    "call"     : Fields(["Type", "Pos", "Len", "ID"]),
+    "set"      : Fields(["Type", "Pos", "Len", "Left", "Right"]),
+    "let"      : Fields(["Type", "Pos", "Len", "Left", "Right"]),
+    "inc"      : Fields(["Type", "Pos", "Len", "ID", "Expr"]),
+    "dec"      : Fields(["Type", "Pos", "Len", "ID", "Expr"]),
+    "if"       : Fields(["Type", "Pos", "Len", "Expr", "Then", "Else"]),
+    "block"    : Fields(["Type", "Pos", "Len", "Body"]),
+    "for"      : Fields(["Type", "Pos", "Len", "Expr", "Body"]),
+    "for_to"   : Fields(["Type", "Pos", "Len", "ID", "From", "Limit", "Step", "Body"]),
+    "for_in"   : Fields(["Type", "Pos", "Len", "IDs", "INs", "Body"]),
+    "return"   : Fields(["Type", "Pos", "Len", "List"]),
+    "break"    : Fields(["Type", "Pos", "Len", "Expr"]),
+    "continue" : Fields(["Type", "Pos", "Len"]),
+    "label"    : Fields(["Type", "Pos", "Len", "Name"]),
+    "func"     : Fields(["Type", "Pos", "Len", "Name", "Params", "Body", "Receiver", "Dot"]),
+    "nop"      : Fields(["Type", "Pos", "Len"]),
+    "vararg"   : Fields(["Type", "Pos", "Len"]),
+    "param"    : Fields(["Type", "Pos", "Len", "Name"]),
+    "params"   : Fields(["Type", "Pos", "Len", "List"]),
+    "switch"   : Fields(["Type", "Pos", "Len", "Expr", "Cases", "Default"]),
+    "case"     : Fields(["Type", "Pos", "Len", "List", "Expr", "Body"]),
+    "const"    : Fields(["Type", "Pos", "Len", "List"]),
 }
 
-Node := Type.{
+Node := Type({
     __tostring: List.__tostring,
     __index: func(t, k) {
         if type(k) == "string" {
@@ -174,15 +174,15 @@ Node := Type.{
         }
         return nil
     },
-}
+})
 
-KEYWORDS := Set.["break", "continue", "else", "false", "for", "func", "if", "in", "nil", "return", "true", "switch", "case", "default", "const"]
-RESERVED := Set.["local", "function", "while", "do", "end", "repeat", "until", "and", "or", "not", "then", "elseif"]
-LITERALS := Set.["str", "chr", "raw", "num", "true", "false", "nil"]
-REL_OPS := Set.["==", "!=", "<", ">", "<=", ">="]
-MUL_OPS := Set.["*", "/", "%"]
-ADD_OPS := Set.["+", "-"]
-UNR_OPS := Set.["+", "-", "!", "#"]
+KEYWORDS := Set(["break", "continue", "else", "false", "for", "func", "if", "in", "nil", "return", "true", "switch", "case", "default", "const"])
+RESERVED := Set(["local", "function", "while", "do", "end", "repeat", "until", "and", "or", "not", "then", "elseif"])
+LITERALS := Set(["str", "chr", "raw", "num", "true", "false", "nil"])
+REL_OPS := Set(["==", "!=", "<", ">", "<=", ">="])
+MUL_OPS := Set(["*", "/", "%"])
+ADD_OPS := Set(["+", "-"])
+UNR_OPS := Set(["+", "-", "!", "#"])
 
 const (
     LF = 0x0A
@@ -234,13 +234,13 @@ p_chr := nil
 p_tok := nil
 p_lit := ""
 p_val := nil
-p_comments := List.[]
+p_comments := List([])
 p_vars := {}
 p_scope := {}
 p_level := 0
 p_skip_id_check := false
 p_skipped_id_name := nil
-p_continue := List.[]
+p_continue := List([])
 p_looplevel := 0
 
 func errorf(notef, ...) {
@@ -352,7 +352,7 @@ func scan() {
             if base == 10 {
                 p_val = tonumber(p_lit)
             } else {
-                p_val = Hex.[tonumber(p_lit, base)]
+                p_val = Hex([tonumber(p_lit, base)])
             }
             if p_val == nil {
                 errorf("malformed number '%s'", p_lit)
@@ -383,7 +383,7 @@ func scan() {
             }
             if chr != '`' { errorf("expected `, found '%c'", chr) }
             p_lit = string_sub(src, beg+1, pos-1)
-            p_val = Raw.[p_lit]
+            p_val = Raw([p_lit])
             pos += 1; chr = byte(src, pos)
         case "chr":
             beg := pos
@@ -397,7 +397,7 @@ func scan() {
                 errorf("expected ', found '%c'", chr)
             }
             p_lit = string_sub(src, beg+1, pos-1)
-            p_val = Hex.[string_byte(p_lit)]
+            p_val = Hex([string_byte(p_lit)])
             pos += 1; chr = byte(src, pos)
         case ":":
             pos += 1; chr = byte(src, pos)
@@ -477,12 +477,6 @@ func scan() {
                     tok = "..."
                     pos += 1; chr = byte(src, pos)
                 }
-            } else if chr == '[' {
-                tok = ".["
-                pos += 1; chr = byte(src, pos)
-            } else if chr == '{' {
-                tok = ".{"
-                pos += 1; chr = byte(src, pos)
             }
         case nil; chr != nil:
             errorf("unknown symbol '%c'", chr)
@@ -555,7 +549,7 @@ parse_expr := nil
 parse_table, parse_list := nil, nil
 
 func parse_tail(call) {
-    tail, i := List.[], 0
+    tail, i := List([]), 0
     for true {
         pos := p_tokpos
         dot := (p_tok == ".")
@@ -567,13 +561,11 @@ func parse_tail(call) {
             }
             name := p_lit
             args := false
-            paren := false
             last := p_tokpos
             scan()
-            switch p_tok {
-            case "(":
+            if p_tok == "(" {
                 scan()
-                args = List.[]
+                args = List([])
                 for p_tok != ")" {
                     args[#args+1] = parse_expr()
                     if p_tok != "," {
@@ -584,35 +576,13 @@ func parse_tail(call) {
                 last = p_tokpos
                 skip(")")
                 call = true
-                paren = true
-            case "str":
-                args = List.[Node.["value", p_tokpos, p_endpos-pos, p_val]]
-                last = p_tokpos
-                scan()
-                call = true
-            case "chr":
-                args = List.[Node.["value", p_tokpos, p_endpos-pos, p_val]]
-                last = p_tokpos
-                scan()
-                call = true
-                paren = true
-            case ".{":
-                args = List.[parse_table()]
-                last = p_tokpos
-                scan()
-                call = true
-            case ".[":
-                args = List.[parse_list()]
-                last = p_tokpos
-                scan()
-                call = true
-            default:
+            } else {
                 call = false
             }
             if args && dot && (KEYWORDS[name] || RESERVED[name]) {
                 errorf("name '%s' cannot be used in a method call", name)
             }
-            item := Node.["field", pos, last - pos, args || false, name, dot, paren]
+            item := Node(["field", pos, last - pos, args || false, name, dot])
             i += 1
             tail[i] = item
         case "[":
@@ -621,7 +591,7 @@ func parse_tail(call) {
             expr := parse_expr()
             skip("]")
             i += 1
-            tail[i] = Node.["index", pos, p_endpos-pos, expr]
+            tail[i] = Node(["index", pos, p_endpos-pos, expr])
         default:
             break
         }
@@ -642,14 +612,12 @@ func parse_id() {
         _const = id[7]
     }
     call := false
-    paren := false
     args, tail := false, false
     scan()
     if !_const {
-        switch p_tok {
-        case "(":
+        if p_tok == "(" {
             scan()
-            args = List.[]
+            args = List([])
             for p_tok != ")" {
                 args[#args+1] = parse_expr()
                 if p_tok != "," {
@@ -659,26 +627,10 @@ func parse_id() {
             }
             skip(")")
             call = true
-            paren = true
-        case "str":
-            args = List.[Node.["value", p_tokpos, p_endpos-pos, p_val]]
-            scan()
-            call = true
-        case "chr":
-            args = List.[Node.["value", p_tokpos, p_endpos-pos, p_val]]
-            scan()
-            call = true
-            paren = true
-        case ".{":
-            args = List.[parse_table()]
-            call = true
-        case ".[":
-            args = List.[parse_list()]
-            call = true
         }
         tail, call = parse_tail(call)
     }
-    node := Node.["id", pos, p_endpos-pos, name, tail, args, _const, paren]
+    node := Node(["id", pos, p_endpos-pos, name, tail, args, _const])
     return node, call
 }
 
@@ -687,44 +639,44 @@ func parse_paren() {
     skip("(")
     expr := parse_expr()
     skip(")")
-    return Node.["paren", pos, p_endpos-pos, expr]
+    return Node(["paren", pos, p_endpos-pos, expr])
 }
 
 parse_table = func() {
     pos := p_tokpos
-    list := List.[]
-    scan() // skip "{" || ".{"
+    list := List([])
+    skip("{")
     for p_tok != "}" {
         key_pos := p_tokpos
         left := nil
         if p_tok == "id" || KEYWORDS[p_lit] {
-            left = Node.["id", key_pos, #p_lit, p_lit, false, false]
+            left = Node(["id", key_pos, #p_lit, p_lit, false, false])
             scan()
         } else if p_tok == "[" {
             scan()
             expr := parse_expr()
             skip("]")
-            left = Node.["index", key_pos, p_endpos-key_pos, expr]
+            left = Node(["index", key_pos, p_endpos-key_pos, expr])
         } else {
             left = parse_expr()
         }
         expect(":")
         scan()
         right := parse_expr()
-        list[#list+1] = Node.["pair", pos, p_endpos-pos, left, right]
+        list[#list+1] = Node(["pair", pos, p_endpos-pos, left, right])
         if p_tok != "," {
             break
         }
         scan()
     }
     skip("}")
-    return Node.["table", pos, p_endpos-pos, list]
+    return Node(["table", pos, p_endpos-pos, list])
 }
 
 parse_list = func() {
     pos := p_tokpos
-    list := List.[]
-    scan() // skip "[" || ".["
+    list := List([])
+    skip("[")
     for p_tok != "]" {
         list[#list+1] = parse_expr()
         if p_tok != "," {
@@ -733,7 +685,7 @@ parse_list = func() {
         scan()
     }
     skip("]")
-    return Node.["list", pos, p_endpos-pos, list]
+    return Node(["list", pos, p_endpos-pos, list])
 }
 
 parse_func := nil
@@ -745,7 +697,7 @@ func parse_operand() {
         pos, len, val := p_tokpos, #p_lit, p_val
         scan()
         tail := parse_tail()
-        node = Node.["value", pos, len, val, tail]
+        node = Node(["value", pos, len, val, tail])
     case "id":
         node = parse_id()
     case "(":
@@ -757,11 +709,11 @@ func parse_operand() {
     case "func":
         node = parse_func(true)
     case "...":
-        node = Node.["vararg", p_tokpos, 3]
+        node = Node(["vararg", p_tokpos, 3])
         scan()
     default:
         if LITERALS[p_tok] {
-            node = Node.["value", p_tokpos, #p_lit, p_val]
+            node = Node(["value", p_tokpos, #p_lit, p_val])
             scan()
         } else {
             errorf("expected operand, found '%s'", p_tok)
@@ -776,7 +728,7 @@ func parse_pow() {
     for p_tok == "^" {
         scan()
         right := parse_operand()
-        left = Node.["binop", pos, p_endpos-pos, left, "^", right]
+        left = Node(["binop", pos, p_endpos-pos, left, "^", right])
     }
     return left
 }
@@ -788,7 +740,7 @@ func parse_unary() {
         op := p_tok
         scan()
         right := parse_pow()
-        expr = Node.["unop", pos, p_endpos-pos, op, right]
+        expr = Node(["unop", pos, p_endpos-pos, op, right])
     } else {
         expr = parse_pow()
     }
@@ -802,7 +754,7 @@ func parse_mul() {
         op := p_tok
         scan()
         right := parse_unary()
-        left = Node.["binop", pos, p_endpos-pos, left, op, right]
+        left = Node(["binop", pos, p_endpos-pos, left, op, right])
     }
     return left
 }
@@ -814,7 +766,7 @@ func parse_add() {
         op := p_tok
         scan()
         right := parse_mul()
-        left = Node.["binop", pos, p_endpos-pos, left, op, right]
+        left = Node(["binop", pos, p_endpos-pos, left, op, right])
     }
     return left
 }
@@ -825,7 +777,7 @@ func parse_cat() {
     for p_tok == ".." {
         scan()
         right := parse_add()
-        left = Node.["binop", pos, p_endpos-pos, left, "..", right]
+        left = Node(["binop", pos, p_endpos-pos, left, "..", right])
     }
     return left
 }
@@ -837,7 +789,7 @@ func parse_rel() {
         op := p_tok
         scan()
         right := parse_cat()
-        left = Node.["binop", pos, p_endpos-pos, left, op, right]
+        left = Node(["binop", pos, p_endpos-pos, left, op, right])
     }
     return left
 }
@@ -849,7 +801,7 @@ func parse_and() {
         op := p_tok
         scan()
         right := parse_rel()
-        left = Node.["binop", pos, p_endpos-pos, left, op, right]
+        left = Node(["binop", pos, p_endpos-pos, left, op, right])
     }
     return left
 }
@@ -861,7 +813,7 @@ parse_expr = func() {
         op := p_tok
         scan()
         right := parse_and()
-        left = Node.["binop", pos, p_endpos-pos, left, op, right]
+        left = Node(["binop", pos, p_endpos-pos, left, op, right])
     }
     return left
 }
@@ -875,21 +827,21 @@ func parse_set_or_call() {
     id, call := parse_id()
     if call {
         assertf(find_var(name), "undeclared variable '%s'", name)
-        return Node.["call", pos, p_endpos-pos, id]
+        return Node(["call", pos, p_endpos-pos, id])
     }
     if p_tok == "+=" {
         assertf(find_var(name), "undeclared variable '%s'", name)
         scan()
         expr := parse_add()
-        return Node.["inc", pos, p_endpos-pos, id, expr]
+        return Node(["inc", pos, p_endpos-pos, id, expr])
     }
     if p_tok == "-=" {
         assertf(find_var(name), "undeclared variable '%s'", name)
         scan()
         expr := parse_add()
-        return Node.["dec", pos, p_endpos-pos, id, expr]
+        return Node(["dec", pos, p_endpos-pos, id, expr])
     }
-    left := List.[id]
+    left := List([id])
     for p_tok == "," {
         scan()
         expect("id")
@@ -905,7 +857,7 @@ func parse_set_or_call() {
             assertf(!v[7], "cannot assign to '%s' (declared const)", name)
         }
         scan()
-        right := List.[]
+        right := List([])
         for true {
             right[#right+1] = parse_expr()
             if p_tok != "," {
@@ -913,7 +865,7 @@ func parse_set_or_call() {
             }
             scan()
         }
-        return Node.["set", pos, p_endpos-pos, left, right]
+        return Node(["set", pos, p_endpos-pos, left, right])
     }
     if p_tok == ":=" {
         allow := false
@@ -930,7 +882,7 @@ func parse_set_or_call() {
         }
         assertf(allow, "no new variables on left side of ':='")
         scan()
-        right := List.[]
+        right := List([])
         for {
             right[#right+1] = parse_expr()
             if p_tok != "," {
@@ -941,7 +893,7 @@ func parse_set_or_call() {
         for _, v in ipairs(left) {
             p_vars[v[4]] = v
         }
-        return Node.["let", pos, p_endpos-pos, left, right]
+        return Node(["let", pos, p_endpos-pos, left, right])
     }
     expect("=")
 }
@@ -960,14 +912,14 @@ func parse_if() {
             else_body = parse_block()
         }
     }
-    return Node.["if", pos, p_endpos-pos, expr, body, else_body]
+    return Node(["if", pos, p_endpos-pos, expr, body, else_body])
 }
 
 func parse_switch() {
     pos := p_tokpos
     skip("switch")
     expr := false
-    cases := List.[]
+    cases := List([])
     if p_tok == "{" {
         scan()
         for p_tok == "case" {
@@ -975,7 +927,7 @@ func parse_switch() {
             case_expr := parse_expr()
             skip(":")
             body := parse_body()
-            cases[#cases+1] = Node.["case", pos, p_endpos-pos, false, case_expr, body]
+            cases[#cases+1] = Node(["case", pos, p_endpos-pos, false, case_expr, body])
         }
     } else {
         expr = parse_expr()
@@ -983,7 +935,7 @@ func parse_switch() {
         expect("case")
         for p_tok == "case" {
             scan()
-            list := List.[]
+            list := List([])
             for true {
                 list[#list+1] = parse_expr()
                 if p_tok != "," {
@@ -998,7 +950,7 @@ func parse_switch() {
             }
             skip(":")
             body := parse_body()
-            cases[#cases+1] = Node.["case", pos, p_endpos-pos, list, case_expr, body]
+            cases[#cases+1] = Node(["case", pos, p_endpos-pos, list, case_expr, body])
         }
     }
     _default := false
@@ -1008,7 +960,7 @@ func parse_switch() {
         _default = parse_body()
     }
     skip("}")
-    return Node.["switch", pos, p_endpos-pos, expr, cases, _default]
+    return Node(["switch", pos, p_endpos-pos, expr, cases, _default])
 }
 
 func parse_for() {
@@ -1017,14 +969,14 @@ func parse_for() {
     skip("for")
     if p_tok == "{" {
         body := parse_block(nil, true)
-        return Node.["for", pos, p_endpos-pos, false, body]
+        return Node(["for", pos, p_endpos-pos, false, body])
     }
     p_skip_id_check = true
     expr := parse_expr()
     if p_tok == "{" || expr[1] != "id" || expr[5] || expr[6] {
         assertf(find_var(p_skipped_id_name), "undeclared variable '%s'", p_skipped_id_name)
         body := parse_block(nil, true)
-        return Node.["for", pos, p_endpos-pos, expr, body]
+        return Node(["for", pos, p_endpos-pos, expr, body])
     }
     vars := {[expr[4]]: expr}
     if p_tok == ":=" {
@@ -1039,24 +991,24 @@ func parse_for() {
             by = parse_expr()
         }
         body := parse_block(vars, true)
-        return Node.["for_to", pos, p_endpos-pos, expr, from, to, by || false, body]
+        return Node(["for_to", pos, p_endpos-pos, expr, from, to, by || false, body])
     }
     assertf(!find_var(p_skipped_id_name), "variable shadowing is prohibited, you need to change the name '%s'", p_skipped_id_name)
-    ids := List.[expr]
+    ids := List([expr])
     for p_tok == "," {
         scan()
         expect("id")
         name := p_lit
         assertf(!RESERVED[name], "name '%s' is reserved", name)
         assertf(!find_var(name), "variable shadowing is prohibited, you need to change the name '%s'", name)
-        id := Node.["id", p_tokpos, #name, name, false, false]
+        id := Node(["id", p_tokpos, #name, name, false, false])
         ids[#ids+1] = id
         assertf(vars[name] == nil, "re-declaring variable '%s'", name)
         vars[name] = id
         scan()
     }
     expect("in")
-    ins := List.[]
+    ins := List([])
     scan()
     ins[#ins+1] = parse_expr()
     if p_tok == "," {
@@ -1068,13 +1020,13 @@ func parse_for() {
         ins[#ins+1] = parse_expr()
     }
     body := parse_block(vars, true)
-    return Node.["for_in", pos, p_endpos-pos, ids, ins, body]
+    return Node(["for_in", pos, p_endpos-pos, ids, ins, body])
 }
 
 func parse_return() {
     pos := p_tokpos
     skip("return")
-    list := List.[]
+    list := List([])
     if p_tok != "}" {
         for {
             list[#list+1] = parse_expr()
@@ -1087,7 +1039,7 @@ func parse_return() {
     if p_tok && p_tok != "case" {
         expect("}")
     }
-    return Node.["return", pos, p_endpos-pos, list]
+    return Node(["return", pos, p_endpos-pos, list])
 }
 
 func parse_break() {
@@ -1100,7 +1052,7 @@ func parse_break() {
         expr = parse_expr()
     }
     expect("}")
-    return Node.["break", pos, 5, expr]
+    return Node(["break", pos, 5, expr])
 }
 
 func parse_continue() {
@@ -1109,7 +1061,7 @@ func parse_continue() {
     skip("continue")
     expect("}")
     p_continue[p_looplevel] = true
-    return Node.["continue", pos, 8]
+    return Node(["continue", pos, 8])
 }
 
 func parse_const() {
@@ -1119,34 +1071,34 @@ func parse_const() {
         name := p_lit
         assertf(!RESERVED[name], "name '%s' is reserved", name)
         assertf(!find_var(name), "variable shadowing is prohibited, you need to change the name '%s'", name)
-        id := Node.["id", p_tokpos, #name, name, false, false, nil]
-        list := List.[id]
+        id := Node(["id", p_tokpos, #name, name, false, false, nil])
+        list := List([id])
         scan()
         skip("=")
         assertf(LITERALS[p_tok], "expected value")
-        id[7] = Node.["value", p_tokpos, #p_lit, p_val]
+        id[7] = Node(["value", p_tokpos, #p_lit, p_val])
         p_vars[name] = id
         scan()
-        return Node.["const", pos, p_endpos-pos, list]
+        return Node(["const", pos, p_endpos-pos, list])
     }
     if p_tok == "(" {
         scan()
-        list := List.[]
+        list := List([])
         for p_tok == "id" {
             name := p_lit
             assertf(!RESERVED[name], "name '%s' is reserved", name)
             assertf(!find_var(name), "variable shadowing is prohibited, you need to change the name '%s'", name)
-            id := Node.["id", p_tokpos, #name, name, false, false, nil]
+            id := Node(["id", p_tokpos, #name, name, false, false, nil])
             list[#list+1] = id
             scan()
             skip("=")
             assertf(LITERALS[p_tok], "expected value")
-            id[7] = Node.["value", p_tokpos, #p_lit, p_val]
+            id[7] = Node(["value", p_tokpos, #p_lit, p_val])
             p_vars[name] = id
             scan()
         }
         skip(")")
-        return Node.["const", pos, p_endpos-pos, list]
+        return Node(["const", pos, p_endpos-pos, list])
     }
     expect("id")
 }
@@ -1154,10 +1106,10 @@ func parse_const() {
 func parse_params() {
     pos := p_tokpos
     skip("(")
-    list := List.[]
+    list := List([])
     for true {
         if p_tok == "..." {
-            id := Node.["param", p_tokpos, 3, "..."]
+            id := Node(["param", p_tokpos, 3, "..."])
             list[#list+1] = id
             p_vars["..."] = id
             scan()
@@ -1166,7 +1118,7 @@ func parse_params() {
         if p_tok != "id" {
             break
         }
-        id := Node.["param", p_tokpos, #p_lit, p_lit]
+        id := Node(["param", p_tokpos, #p_lit, p_lit])
         list[#list+1] = id
         assertf(p_vars[p_lit] == nil, "parameter '%s' is already declared", p_lit)
         p_vars[p_lit] = id
@@ -1177,7 +1129,7 @@ func parse_params() {
         scan()
     }
     skip(")")
-    return Node.["params", pos, p_endpos-pos, list]
+    return Node(["params", pos, p_endpos-pos, list])
 }
 
 parse_func = func(lambda) {
@@ -1199,7 +1151,7 @@ parse_func = func(lambda) {
             receiver = name
             name = p_lit
             scan()
-            vars = {"self": Node.["id", 0, 0, "self", false, false]}
+            vars = {"self": Node(["id", 0, 0, "self", false, false])}
         } else if p_tok == "::" {
             scan()
             expect("id")
@@ -1216,7 +1168,7 @@ parse_func = func(lambda) {
     params := parse_params()
     body := parse_block()
     close_scope()
-    node := Node.["func", pos, p_endpos-pos, name, params, body, receiver, dot]
+    node := Node(["func", pos, p_endpos-pos, name, params, body, receiver, dot])
     if !lambda {
         p_vars[name] = node
     }
@@ -1247,14 +1199,14 @@ func parse_statement() {
         return parse_const()
     case ";":
         scan()
-        return Node.["nop", p_curpos, 1]
+        return Node(["nop", p_curpos, 1])
     }
     return nil
 }
 
 parse_body = func(vars) {
     open_scope(vars)
-    body := List.[]
+    body := List([])
     for true {
         stmt := parse_statement()
         if stmt == nil {
@@ -1272,11 +1224,11 @@ parse_block = func(vars, loop) {
     body := parse_body(vars)
     skip("}")
     if loop && p_continue[p_looplevel] {
-        body[#body+1] = Node.["label", 0, 0, "continue"]
+        body[#body+1] = Node(["label", 0, 0, "continue"])
         p_continue[p_looplevel] = false
         p_looplevel = p_looplevel - 1
     }
-    return Node.["block", pos, p_endpos-pos, body]
+    return Node(["block", pos, p_endpos-pos, body])
 }
 
 func parse_module(src, path, vars) {
@@ -1290,17 +1242,17 @@ func parse_module(src, path, vars) {
     p_tok = nil
     p_lit = ""
     p_val = nil
-    p_comments = List.[]
+    p_comments = List([])
     p_vars = {_G: ["id", 0, 0, "_G", false, false]}
     p_level = 1
-    p_scope = List.[p_vars]
-    p_continue = List.[]
+    p_scope = List([p_vars])
+    p_continue = List([])
     p_looplevel = 0
     p_curpos += 1; p_chr = string_byte(p_src, p_curpos)
     scan()
     pos := p_tokpos
     body := parse_body(vars)
-    module := Node.["module", pos, p_endpos-pos, body, p_comments]
+    module := Node(["module", pos, p_endpos-pos, body, p_comments])
     if p_tok != nil {
         errorf("unexpected '%s'", p_tok)
     }
@@ -1324,369 +1276,360 @@ func space() {
     return string_rep("    ", v_level)
 }
 
-func add(s) {
+func emit(s) {
     v_res[#v_res+1] = s
 }
 
-visit_expr := nil
+emit_expr := nil
 
-func visit_field(node) {
+func emit_field(node) {
     args := node[4]
-    paren := node[7]
     name := node[5]
     if args {
         if node[6] {
-            add(":" .. name)
+            emit(":" .. name)
         } else {
             if KEYWORDS[name] || RESERVED[name] {
-                add("[\"" .. name .. "\"]")
+                emit("[\"" .. name .. "\"]")
             } else {
-                add("." .. name)
+                emit("." .. name)
             }
         }
-        if paren {
-            add("(")
-        }
+        emit("(")
         if #args > 0 {
             for _, v in ipairs(args) {
-                visit_expr(v)
-                add(", ")
+                emit_expr(v)
+                emit(", ")
             }
             v_res[#v_res] = ""
         }
-        if paren {
-            add(")")
-        }
+        emit(")")
     } else {
         if KEYWORDS[name] || RESERVED[name] {
-            add("[\"" .. name .. "\"]")
+            emit("[\"" .. name .. "\"]")
         } else {
-            add("." .. name)
+            emit("." .. name)
         }
     }
 }
 
-func visit_index(node) {
-    add("[")
-    visit_expr(node[4])
-    add("]")
+func emit_index(node) {
+    emit("[")
+    emit_expr(node[4])
+    emit("]")
 }
 
-func visit_value(node) {
+func emit_value(node) {
     v := node[4]
     if type(v) == "string" {
         tail := node[5]
         if tail {
-            add("(\"" .. v .. "\")")
+            emit("(\"" .. v .. "\")")
             for _, _v in ipairs(tail) {
                 if _v[1] == "field" {
-                    visit_field(_v)
+                    emit_field(_v)
                 } else {
-                    visit_index(_v)
+                    emit_index(_v)
                 }
             }
         } else {
-            add("\"" .. v .. "\"")
+            emit("\"" .. v .. "\"")
         }
     } else {
-        add(tostring(v))
+        emit(tostring(v))
     }
 }
 
-func visit_id(node) {
-    tail, args, _const, paren := node[5], node[6], node[7], node[8]
+func emit_id(node) {
+    tail, args, _const := node[5], node[6], node[7]
     if _const && _const[1] == "value" {
-        visit_value(_const)
+        emit_value(_const)
         return
     }
-    add(node[4])
+    emit(node[4])
     if args {
-        if paren {
-            add("(")
-        }
+        emit("(")
         if #args > 0 {
             for _, v in ipairs(args) {
-                visit_expr(v)
-                add(", ")
+                emit_expr(v)
+                emit(", ")
             }
             v_res[#v_res] = ""
         }
-        if paren {
-            add(")")
-        }
+        emit(")")
     }
     if tail {
         for _, v in ipairs(tail) {
             if v[1] == "field" {
-                visit_field(v)
+                emit_field(v)
             } else {
-                visit_index(v)
+                emit_index(v)
             }
         }
     }
 }
 
-func visit_pair(node) {
+func emit_pair(node) {
     key := node[4]
     if key[1] == "id" && !key[5] && !key[6] {
         name := key[4]
         if KEYWORDS[name] || RESERVED[name] {
-            add("[\"")
-            visit_expr(key)
-            add("\"]")
+            emit("[\"")
+            emit_expr(key)
+            emit("\"]")
         } else {
-            visit_expr(key)
+            emit_expr(key)
         }
     } else if key[1] == "index" {
-        visit_index(key)
+        emit_index(key)
     } else {
-        add("[")
-        visit_expr(key)
-        add("]")
+        emit("[")
+        emit_expr(key)
+        emit("]")
     }
-    add(" = ")
-    visit_expr(node[5])
+    emit(" = ")
+    emit_expr(node[5])
 }
 
-func visit_table(node) {
+func emit_table(node) {
     if #node[4] == 0 {
-        add("{}")
+        emit("{}")
         return
     }
-    add("{\n")
+    emit("{\n")
     v_level += 1
     for _, v in ipairs(node[4]) {
-        add(space())
+        emit(space())
         if v[1] == "pair" {
-            visit_pair(v)
-            add(";\n")
+            emit_pair(v)
+            emit(";\n")
         } else {
-            visit_expr(v)
-            add(",\n")
+            emit_expr(v)
+            emit(",\n")
         }
     }
     v_level -= 1
-    add(space() .. "}")
+    emit(space() .. "}")
 }
 
-func visit_list(node) {
-    add("{")
+func emit_list(node) {
+    emit("{")
     list := node[4]
     if #list > 0 {
         for _, v in ipairs(list) {
-            visit_expr(v)
-            add(", ")
+            emit_expr(v)
+            emit(", ")
         }
         v_res[#v_res] = ""
     }
-    add("}")
+    emit("}")
 }
 
-func visit_paren(node) {
-    add("(")
-    visit_expr(node[4])
-    add(")")
+func emit_paren(node) {
+    emit("(")
+    emit_expr(node[4])
+    emit(")")
 }
 
-func visit_unop(node) {
+func emit_unop(node) {
     op := LUA_OPS[node[4]]
     if op != "+" {
-        add(LUA_OPS[node[4]])
+        emit(LUA_OPS[node[4]])
     }
-    visit_expr(node[5])
+    emit_expr(node[5])
 }
 
-func visit_binop(node) {
-    visit_expr(node[4])
-    add(" " .. LUA_OPS[node[5]] .. " ")
-    visit_expr(node[6])
+func emit_binop(node) {
+    emit_expr(node[4])
+    emit(" " .. LUA_OPS[node[5]] .. " ")
+    emit_expr(node[6])
 }
 
-visit_func := nil
+emit_func := nil
 
-visit_expr = func(node) {
+emit_expr = func(node) {
     switch node[1] {
     case "id":
-        visit_id(node)
+        emit_id(node)
     case "binop":
-        visit_binop(node)
+        emit_binop(node)
     case "unop":
-        visit_unop(node)
+        emit_unop(node)
     case "paren":
-        visit_paren(node)
+        emit_paren(node)
     case "value":
-        visit_value(node)
+        emit_value(node)
     case "table":
-        visit_table(node)
+        emit_table(node)
     case "list":
-        visit_list(node)
+        emit_list(node)
     case "func":
-        visit_func(node, true)
+        emit_func(node, true)
     case "vararg":
-        add("...")
+        emit("...")
     default:
         errorf("unknown node type: '%s'", node[1])
     }
 }
 
-visit_stmt := nil
+emit_stmt := nil
 
-func visit_body(node, skip_break) {
+func emit_body(node, skip_break) {
     v_level += 1
     for _, v in ipairs(node) {
-        visit_stmt(v, skip_break)
+        emit_stmt(v, skip_break)
     }
     v_level -= 1
 }
 
-func visit_block(node, skip_break) {
-    visit_body(node[4], skip_break)
+func emit_block(node, skip_break) {
+    emit_body(node[4], skip_break)
 }
 
-func visit_call(node) {
-    add(space())
-    visit_id(node[4])
-    add("\n")
+func emit_call(node) {
+    emit(space())
+    emit_id(node[4])
+    emit("\n")
 }
 
-func visit_set(node) {
-    add(space())
+func emit_set(node) {
+    emit(space())
     for _, v in ipairs(node[4]) {
-        visit_id(v)
-        add(", ")
+        emit_id(v)
+        emit(", ")
     }
     v_res[#v_res] = " = "
     for _, v in ipairs(node[5]) {
-        visit_expr(v)
-        add(", ")
+        emit_expr(v)
+        emit(", ")
     }
     v_res[#v_res] = "\n"
 }
 
-func visit_inc(node) {
-    add(space())
-    visit_id(node[4])
-    add(" = ")
-    visit_id(node[4])
-    add(" + ")
-    visit_expr(node[5])
-    add("\n")
+func emit_inc(node) {
+    emit(space())
+    emit_id(node[4])
+    emit(" = ")
+    emit_id(node[4])
+    emit(" + ")
+    emit_expr(node[5])
+    emit("\n")
 }
 
-func visit_dec(node) {
-    add(space())
-    visit_id(node[4])
-    add(" = ")
-    visit_id(node[4])
-    add(" - ")
-    visit_expr(node[5])
-    add("\n")
+func emit_dec(node) {
+    emit(space())
+    emit_id(node[4])
+    emit(" = ")
+    emit_id(node[4])
+    emit(" - ")
+    emit_expr(node[5])
+    emit("\n")
 }
 
-func visit_let(node) {
-    add(space() .. "local ")
+func emit_let(node) {
+    emit(space() .. "local ")
     for _, v in ipairs(node[4]) {
-        visit_id(v)
-        add(", ")
+        emit_id(v)
+        emit(", ")
     }
     v_res[#v_res] = " = "
     for _, v in ipairs(node[5]) {
-        visit_expr(v)
-        add(", ")
+        emit_expr(v)
+        emit(", ")
     }
     v_res[#v_res] = "\n"
 }
 
-func visit_if(node) {
-    add(space() .. "if ")
-    visit_expr(node[4])
-    add(" then\n")
-    visit_block(node[5])
+func emit_if(node) {
+    emit(space() .. "if ")
+    emit_expr(node[4])
+    emit(" then\n")
+    emit_block(node[5])
     _else := node[6]
     for _else {
-        add(space() .. "else")
+        emit(space() .. "else")
         if _else[1] == "if" {
-            add("if ")
-            visit_expr(_else[4])
-            add(" then\n")
-            visit_block(_else[5])
+            emit("if ")
+            emit_expr(_else[4])
+            emit(" then\n")
+            emit_block(_else[5])
             _else = _else[6]
         } else {
-            add("\n")
-            visit_block(_else)
+            emit("\n")
+            emit_block(_else)
             _else = nil
         }
     }
-    add(space() .. "end\n")
+    emit(space() .. "end\n")
 }
 
-func visit_switch(node) {
+func emit_switch(node) {
     expr := node[4]
     if expr {
-        add(space() .. "do\n")
+        emit(space() .. "do\n")
         v_level += 1
-        add(space() .. "local case = ")
-        visit_expr(expr)
-        add("\n" .. space())
+        emit(space() .. "local case = ")
+        emit_expr(expr)
+        emit("\n" .. space())
         for _, _case in ipairs(node[5]) {
-            add("if ")
+            emit("if ")
             case_exp := _case[5]
             if case_exp {
-                add("(")
+                emit("(")
             }
             for _, item in ipairs(_case[4]) {
-                add("case == ")
+                emit("case == ")
                 if item[1] == "binop" {
-                    add("(")
-                    visit_expr(item)
-                    add(")")
+                    emit("(")
+                    emit_expr(item)
+                    emit(")")
                 } else {
-                    visit_expr(item)
+                    emit_expr(item)
                 }
-                add(" or ")
+                emit(" or ")
             }
             if case_exp {
                 v_res[#v_res] = ") and ("
-                visit_expr(case_exp)
-                add(")")
+                emit_expr(case_exp)
+                emit(")")
             } else {
                 v_res[#v_res] = ""
             }
-            add(" then\n")
-            visit_body(_case[6])
-            add(space() .. "else")
+            emit(" then\n")
+            emit_body(_case[6])
+            emit(space() .. "else")
         }
         _default := node[6]
         if _default {
-            add("\n")
-            visit_body(_default)
+            emit("\n")
+            emit_body(_default)
         } else {
             v_res[#v_res] = ""
         }
-        add(space() .. "end\n")
+        emit(space() .. "end\n")
         v_level -= 1
-        add(space() .. "end\n")
+        emit(space() .. "end\n")
     } else {
-        add(space())
+        emit(space())
         for _, _case in ipairs(node[5]) {
-            add("if ")
-            visit_expr(_case[5])
-            add(" then\n")
-            visit_body(_case[6])
-            add(space() .. "else")
+            emit("if ")
+            emit_expr(_case[5])
+            emit(" then\n")
+            emit_body(_case[6])
+            emit(space() .. "else")
         }
         _default := node[6]
         if _default {
-            add("\n")
-            visit_body(_default)
+            emit("\n")
+            emit_body(_default)
         } else {
             v_res[#v_res] = ""
         }
-        add(space() .. "end\n")
+        emit(space() .. "end\n")
     }
 }
 
-func visit_for(node) {
+func emit_for(node) {
     expr := node[4]
     block := node[5]
     body := block[4]
@@ -1695,168 +1638,168 @@ func visit_for(node) {
         if last[1] == "break" {
             break_expr := last[4]
             if break_expr {
-                add(space() .. "repeat\n")
-                visit_block(block, true)
-                add(space() .. "until ")
-                visit_expr(break_expr)
-                add("\n")
+                emit(space() .. "repeat\n")
+                emit_block(block, true)
+                emit(space() .. "until ")
+                emit_expr(break_expr)
+                emit("\n")
                 return
             }
         }
     }
-    add(space() .. "while ")
+    emit(space() .. "while ")
     if expr {
-        visit_expr(expr)
+        emit_expr(expr)
     } else {
-        add("true")
+        emit("true")
     }
-    add(" do\n")
-    visit_block(block)
-    add(space() .. "end\n")
+    emit(" do\n")
+    emit_block(block)
+    emit(space() .. "end\n")
 }
 
-func visit_for_to(node) {
-    add(space() .. "for ")
-    visit_id(node[4])
-    add(" = ")
-    visit_expr(node[5])
-    add(", ")
-    visit_expr(node[6])
+func emit_for_to(node) {
+    emit(space() .. "for ")
+    emit_id(node[4])
+    emit(" = ")
+    emit_expr(node[5])
+    emit(", ")
+    emit_expr(node[6])
     step := node[7]
     if step {
-        add(", ")
-        visit_expr(step)
+        emit(", ")
+        emit_expr(step)
     }
-    add(" do\n")
-    visit_block(node[8])
-    add(space() .. "end\n")
+    emit(" do\n")
+    emit_block(node[8])
+    emit(space() .. "end\n")
 }
 
-func visit_for_in(node) {
-    add(space() .. "for ")
+func emit_for_in(node) {
+    emit(space() .. "for ")
     for _, v in ipairs(node[4]) {
-        visit_id(v)
-        add(", ")
+        emit_id(v)
+        emit(", ")
     }
     v_res[#v_res] = " in "
     for _, v in ipairs(node[5]) {
-        visit_expr(v)
-        add(", ")
+        emit_expr(v)
+        emit(", ")
     }
     v_res[#v_res] = " do\n"
-    visit_block(node[6])
-    add(space() .. "end\n")
+    emit_block(node[6])
+    emit(space() .. "end\n")
 }
 
-func visit_return(node) {
+func emit_return(node) {
     list := node[4]
-    add(space() .. "return")
+    emit(space() .. "return")
     if list {
-        add(" ")
+        emit(" ")
         for _, v in ipairs(list) {
-            visit_expr(v)
-            add(", ")
+            emit_expr(v)
+            emit(", ")
         }
         v_res[#v_res] = ""
     }
-    add("\n")
+    emit("\n")
 }
 
-func visit_break(node) {
+func emit_break(node) {
     expr := node[4]
     if expr {
-        add(space() .. "if ")
-        visit_expr(expr)
-        add(" then\n")
+        emit(space() .. "if ")
+        emit_expr(expr)
+        emit(" then\n")
         v_level = v_level + 1
-        add(space() .. "break\n")
+        emit(space() .. "break\n")
         v_level = v_level - 1
-        add(space() .. "end\n")
+        emit(space() .. "end\n")
     } else {
-        add(space() .. "break\n")
+        emit(space() .. "break\n")
     }
 }
 
-func visit_continue(node) {
-    add(space() .. "goto continue\n")
+func emit_continue(node) {
+    emit(space() .. "goto continue\n")
 }
 
-func visit_label(node) {
-    add(space() .. "::" .. node[4] .. "::\n")
+func emit_label(node) {
+    emit(space() .. "::" .. node[4] .. "::\n")
 }
 
-func visit_params(node) {
+func emit_params(node) {
     t := {}
     for _, v in ipairs(node[4]) {
         t[#t+1] = v[4]
     }
-    add("("..table_concat(t, ", ")..")\n")
+    emit("("..table_concat(t, ", ")..")\n")
 }
 
-visit_func = func(node, lambda) {
+emit_func = func(node, lambda) {
     if lambda {
-        add("function")
+        emit("function")
     } else if node[7] {
         if node[8] {
-            add(space() .. "function " .. node[7] .. ":" .. node[4])
+            emit(space() .. "function " .. node[7] .. ":" .. node[4])
         } else {
-            add(space() .. "function " .. node[7] .. "." .. node[4])
+            emit(space() .. "function " .. node[7] .. "." .. node[4])
         }
     } else {
-        add(space() .. "local function " .. node[4])
+        emit(space() .. "local function " .. node[4])
     }
-    visit_params(node[5])
-    visit_block(node[6])
-    add(space() .. "end")
+    emit_params(node[5])
+    emit_block(node[6])
+    emit(space() .. "end")
     if !lambda {
-        add("\n")
+        emit("\n")
     }
 }
 
-func visit_nop(node) {
+func emit_nop(node) {
     v_res[#v_res] = ";\n"
 }
 
-visit_stmt = func(node, skip_break) {
+emit_stmt = func(node, skip_break) {
     switch node[1] {
     case "call":
-        visit_call(node)
+        emit_call(node)
     case "set":
-        visit_set(node)
+        emit_set(node)
     case "inc":
-        visit_inc(node)
+        emit_inc(node)
     case "dec":
-        visit_dec(node)
+        emit_dec(node)
     case "let":
-        visit_let(node)
+        emit_let(node)
     case "if":
-        visit_if(node)
+        emit_if(node)
     case "switch":
-        visit_switch(node)
+        emit_switch(node)
     case "block":
-        add(space() .. "do\n")
-        visit_block(node)
-        add(space() .. "end\n")
+        emit(space() .. "do\n")
+        emit_block(node)
+        emit(space() .. "end\n")
     case "for":
-        visit_for(node)
+        emit_for(node)
     case "for_to":
-        visit_for_to(node)
+        emit_for_to(node)
     case "for_in":
-        visit_for_in(node)
+        emit_for_in(node)
     case "return":
-        visit_return(node)
+        emit_return(node)
     case "break":
         if !skip_break {
-            visit_break(node)
+            emit_break(node)
         }
     case "continue":
-        visit_continue(node)
+        emit_continue(node)
     case "label":
-        visit_label(node)
+        emit_label(node)
     case "func":
-        visit_func(node)
+        emit_func(node)
     case "nop":
-        visit_nop(node)
+        emit_nop(node)
     case "const":
         // skip
     default:
@@ -1864,11 +1807,11 @@ visit_stmt = func(node, skip_break) {
     }
 }
 
-func visit_module(node, level) {
+func emit_module(node, level) {
     v_res = []
     v_level = level || 0
     for _, v in ipairs(node[4]) {
-        visit_stmt(v)
+        emit_stmt(v)
     }
     return table_concat(v_res)
 }
@@ -1880,7 +1823,7 @@ func visit_module(node, level) {
         src := io::open(fn, "r").read("a")
         r, m := pcall(parse_module, src, fn)
         if r {
-            res := visit_module(m, 0)
+            res := emit_module(m, 0)
             out := _G.arg[2]
             if out {
                 io::open(out, "w").write(res)
@@ -1899,5 +1842,5 @@ return {
     Node: Node,
     nodes: nodes,
     parse_module: parse_module,
-    visit_module: visit_module,
+    emit_module: emit_module,
 }

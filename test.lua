@@ -13,7 +13,7 @@ local function test(name)
             error("failed: " .. name .. "\nerror: " .. m)
         end
         return function(want)
-            local res = gua.visit_module(m, 1)
+            local res = gua.emit_module(m, 1)
             if res ~= want then
                 print("failed: " .. name .. "\nres:\n" .. res .. "\nast:\n" .. tostring(m))
             end
@@ -591,69 +591,17 @@ test "exp_17"
     local y = 1
 ]]
 
-test "exp_18"
-[[
-    func foo(s) {
-        print(s)
-    }
-    x := foo "hello"
-]]
-[[
-    local function foo(s)
-        print(s)
-    end
-    local x = foo"hello"
-]]
-
 test "exp_19"
-[[
-    y := {}
-    func y.foo(s) {
-        print(s)
-    }
-    x := y.foo "hello"
-]]
-[[
-    local y = {}
-    function y:foo(s)
-        print(s)
-    end
-    local x = y:foo"hello"
-]]
+[[]]
+[[]]
 
 test "exp_20"
-[[
-    func Struct(t) {
-        print(t)
-    }
-    x := Struct.{
-        one: 1,
-        two: 2,
-    }
-]]
-[[
-    local function Struct(t)
-        print(t)
-    end
-    local x = Struct{
-        one = 1;
-        two = 2;
-    }
-]]
+[[]]
+[[]]
 
 test "exp_21"
-[[
-    func List(t) {
-        print(t)
-    }
-    x := List.[1, 2, 3]
-]]
-[[
-    local function List(t)
-        print(t)
-    end
-    local x = List{1, 2, 3}
-]]
+[[]]
+[[]]
 
 test "exp_22"
 [[
@@ -732,34 +680,12 @@ test "exp_24"
 ]]
 
 test "exp_25"
-[[
-    func foo(s) {
-        print(s)
-    }
-    x := foo'B'
-]]
-[[
-    local function foo(s)
-        print(s)
-    end
-    local x = foo(0x42)
-]]
+[[]]
+[[]]
 
 test "exp_26"
-[[
-    y := {}
-    func y.foo(s) {
-        print(s)
-    }
-    x := y.foo'B'
-]]
-[[
-    local y = {}
-    function y:foo(s)
-        print(s)
-    end
-    local x = y:foo(0x42)
-]]
+[[]]
+[[]]
 
 test "exp_27"
 [[
@@ -797,31 +723,12 @@ test "exp_29"
 ]]
 
 test "exp_30"
-[[
-    x := nil
-    y := x.[1, 2]
-    z := 1
-]]
-[[
-    local x = nil
-    local y = x{1, 2}
-    local z = 1
-]]
+[[]]
+[[]]
 
 test "exp_31"
-[[
-    x := nil
-    y := x.{a: 1, b: 2}
-    z := 1
-]]
-[[
-    local x = nil
-    local y = x{
-        a = 1;
-        b = 2;
-    }
-    local z = 1
-]]
+[[]]
+[[]]
 
 test "exp_32"
 [[
