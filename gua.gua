@@ -381,7 +381,10 @@ func scan() {
             next()
         } else if p_tok == "chr" {
             beg := p_curpos
-            next()
+            if next() == 0x5C { -- \
+                beg = p_curpos
+                next()
+            }
             next()
             if p_chr != 0x27 {
                 errorf("expected ', found '%c'", p_chr)
@@ -1621,8 +1624,9 @@ func visit_switch(node) {
                 v_res[#v_res+1] = " or "
             }
             if case_exp {
-                v_res[#v_res] = ") and "
+                v_res[#v_res] = ") and ("
                 visit_expr(case_exp)
+                v_res[#v_res+1] = ")"
             } else {
                 v_res[#v_res] = ""
             }

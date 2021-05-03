@@ -571,10 +571,14 @@ test "exp_16"
 [[
     x := 'A'
     y := '''
+    z := '\''
+    _ := '\\'
 ]]
 [[
     local x = 0x41
     local y = 0x27
+    local z = 0x27
+    local _ = 0x5C
 ]]
 
 test "exp_17"
@@ -865,7 +869,7 @@ test "switch_01"
     local y = 1
     do
         local case = x
-        if (case == (1 + 0) or case == 2) and y > 0 then
+        if (case == (1 + 0) or case == 2) and (y > 0) then
             print(1)
         elseif case == 3 or case == 4 then
             print(2)

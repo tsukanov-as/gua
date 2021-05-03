@@ -377,7 +377,10 @@ local function scan()
             next()
         elseif p_tok == "chr" then
             local beg = p_curpos
-            next()
+            if next() == 0x5C then -- \
+                beg = p_curpos
+                next()
+            end
             next()
             if p_chr ~= 0x27 then
                 errorf("expected ', found '%c'", p_chr)
@@ -1621,8 +1624,9 @@ local function visit_switch(node)
                 v_res[#v_res+1] = " or "
             end
             if case_exp then
-                v_res[#v_res] = ") and "
+                v_res[#v_res] = ") and ("
                 visit_expr(case_exp)
+                v_res[#v_res+1] = ")"
             else
                 v_res[#v_res] = ""
             end
