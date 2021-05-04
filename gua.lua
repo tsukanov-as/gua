@@ -111,7 +111,7 @@ local nodes = {
     ["let"] = Fields({"Type", "Pos", "Len", "Left", "Right"});
     ["inc"] = Fields({"Type", "Pos", "Len", "ID", "Expr"});
     ["dec"] = Fields({"Type", "Pos", "Len", "ID", "Expr"});
-    ["if"] = Fields({"Type", "Pos", "Len", "Expr", "Then", "Else"});
+    ["if"] = Fields({"Type", "Pos", "Len", "Expr", "Then", "Else", "Left", "Right"});
     ["block"] = Fields({"Type", "Pos", "Len", "Body"});
     ["for"] = Fields({"Type", "Pos", "Len", "Expr", "Body"});
     ["for_to"] = Fields({"Type", "Pos", "Len", "ID", "From", "Limit", "Step", "Body"});
@@ -688,7 +688,7 @@ end
 local function parse_unary()
     local pos = p_tokpos
     local expr = nil
-    if UNR_OPS[p_tok] then
+    if not p_left and UNR_OPS[p_tok] then
         local op = p_tok
         scan()
         local right = parse_pow()
@@ -876,9 +876,8 @@ local function parse_set_or_call()
     end
     expect("=")
 end
-local function parse_if()
-    local pos = p_tokpos
-    skip("if")
+local parse_if = nil
+local function continue_parse_if(pos, left, right)
     local expr = parse_expr()
     local body = parse_block()
     local else_body = false
@@ -890,7 +889,68 @@ local function parse_if()
             else_body = parse_block()
         end
     end
-    return Node({"if", pos, p_endpos - pos, expr, body, else_body})
+    return Node({"if", pos, p_endpos - pos, expr, body, else_body, left, right})
+end
+parse_if = function()
+    local pos = p_tokpos
+    skip("if")
+    if p_tok ~= "id" then
+        return continue_parse_if(pos)
+    end
+    local id = parse_id()
+    local id_name = id[4]
+    local vars = nil
+    local left = nil
+    do
+        local case = p_tok
+        if case == ":=" then
+            check_new_id(true, id_name, id[5], id[6])
+            vars = {
+                [id_name] = id;
+            }
+            left = List({id})
+            scan()
+        elseif case == "," then
+            check_new_id(true, id_name, id[5], id[6])
+            vars = {
+                [id_name] = id;
+            }
+            left = List({id})
+            while p_tok == "," do
+                scan()
+                expect("id")
+                local name = p_lit
+                check_new_id(true, name)
+                local next_id = Node({"id", p_tokpos, #name, name, false, false})
+                left[#left + 1] = next_id
+                if vars[name] then
+                    errorf("re-declaring variable '%s'", name)
+                end
+                vars[name] = next_id
+                scan()
+            end
+            skip(":=")
+        else
+            if not find_var(id_name) then
+                errorf("undeclared variable '%s'", id_name)
+            end
+            p_left = id
+            return continue_parse_if(pos)
+        end
+    end
+    local right = List({})
+    while true do
+        right[#right + 1] = parse_expr()
+        if p_tok ~= "," then
+            break
+        end
+        scan()
+    end
+    skip(";")
+    open_scope(vars)
+    local node = continue_parse_if(pos, left, right)
+    close_scope()
+    return node
 end
 local function parse_switch()
     local pos = p_tokpos
@@ -1530,6 +1590,20 @@ local function emit_let(node)
     v_res[#v_res] = "\n"
 end
 local function emit_if(node)
+    local left, right = node[7], node[8]
+    if left then
+        emit(space() .. "local ")
+        for _, v in ipairs(left) do
+            emit(v[4])
+            emit(", ")
+        end
+        v_res[#v_res] = " = "
+        for _, v in ipairs(right) do
+            emit_expr(v)
+            emit(", ")
+        end
+        v_res[#v_res] = "\n"
+    end
     emit(space() .. "if ")
     emit_expr(node[4])
     emit(" then\n")

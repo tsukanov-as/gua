@@ -10,7 +10,7 @@ local function test(name)
     return function(src)
         local r, m = pcall(gua.parse_module, src, nil, vars)
         if not r then
-            error("failed: " .. name .. "\nerror: " .. m)
+            error("failed: " .. name .. "\nerror: " .. m, 2)
         end
         return function(want)
             local res = gua.emit_module(m, 1)
@@ -245,6 +245,27 @@ test "if_03"
     else
         x = 4
     end
+]]
+
+test "if_04"
+[[
+    func foo() {
+        return 2, 3
+    }
+    if x, y := foo(); x > 1 && y > 1{
+        return x, y
+    }
+    y := 1
+]]
+[[
+    local function foo()
+        return 2, 3
+    end
+    local x, y = foo()
+    if x > 1 and y > 1 then
+        return x, y
+    end
+    local y = 1
 ]]
 
 test "for_01"
@@ -613,6 +634,20 @@ test "exp_17"
 [[
     local x = -1
     local y = 1
+]]
+
+test "exp_18"
+[[
+    x, y := 1, 2
+    if x-y {
+        print(x)
+    }
+]]
+[[
+    local x, y = 1, 2
+    if x - y then
+        print(x)
+    end
 ]]
 
 test "exp_19"

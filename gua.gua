@@ -141,7 +141,7 @@ nodes := {
     "let"      : Fields(["Type", "Pos", "Len", "Left", "Right"]),
     "inc"      : Fields(["Type", "Pos", "Len", "ID", "Expr"]),
     "dec"      : Fields(["Type", "Pos", "Len", "ID", "Expr"]),
-    "if"       : Fields(["Type", "Pos", "Len", "Expr", "Then", "Else"]),
+    "if"       : Fields(["Type", "Pos", "Len", "Expr", "Then", "Else", "Left", "Right"]),
     "block"    : Fields(["Type", "Pos", "Len", "Body"]),
     "for"      : Fields(["Type", "Pos", "Len", "Expr", "Body"]),
     "for_to"   : Fields(["Type", "Pos", "Len", "ID", "From", "Limit", "Step", "Body"]),
@@ -694,7 +694,7 @@ func parse_pow() {
 func parse_unary() {
     pos := p_tokpos
     expr := nil
-    if UNR_OPS[p_tok] {
+    if !p_left && UNR_OPS[p_tok] {
         op := p_tok
         scan()
         right := parse_pow()
@@ -892,9 +892,9 @@ func parse_set_or_call() {
     expect("=")
 }
 
-func parse_if() {
-    pos := p_tokpos
-    skip("if")
+parse_if := nil
+
+func continue_parse_if(pos, left, right) {
     expr := parse_expr()
     body := parse_block()
     else_body := false
@@ -906,7 +906,63 @@ func parse_if() {
             else_body = parse_block()
         }
     }
-    return Node(["if", pos, p_endpos-pos, expr, body, else_body])
+    return Node(["if", pos, p_endpos-pos, expr, body, else_body, left, right])
+}
+
+parse_if = func() {
+    pos := p_tokpos
+    skip("if")
+    if p_tok != "id" {
+        return continue_parse_if(pos)
+    }
+    id := parse_id()
+    id_name := id[4]
+    vars := nil
+    left := nil
+    switch p_tok {
+    case ":=":
+        check_new_id(true, id_name, id[5], id[6])
+        vars = {[id_name]: id}
+        left = List([id])
+        scan()
+    case ",":
+        check_new_id(true, id_name, id[5], id[6])
+        vars = {[id_name]: id}
+        left = List([id])
+        for p_tok == "," {
+            scan()
+            expect("id")
+            name := p_lit
+            check_new_id(true, name)
+            next_id := Node(["id", p_tokpos, #name, name, false, false])
+            left[#left+1] = next_id
+            if vars[name] {
+                errorf("re-declaring variable '%s'", name)
+            }
+            vars[name] = next_id
+            scan()
+        }
+        skip(":=")
+    default:
+        if !find_var(id_name) {
+            errorf("undeclared variable '%s'", id_name)
+        }
+        p_left = id
+        return continue_parse_if(pos)
+    }
+    right := List([])
+    for {
+        right[#right+1] = parse_expr()
+        if p_tok != "," {
+            break
+        }
+        scan()
+    }
+    skip(";")
+    open_scope(vars)
+    node := continue_parse_if(pos, left, right)
+    close_scope()
+    return node
 }
 
 func parse_switch() {
@@ -1568,6 +1624,20 @@ func emit_let(node) {
 }
 
 func emit_if(node) {
+    left, right := node[7], node[8]
+    if left {
+        emit(space() .. "local ")
+        for _, v in ipairs(left) {
+            emit(v[4])
+            emit(", ")
+        }
+        v_res[#v_res] = " = "
+        for _, v in ipairs(right) {
+            emit_expr(v)
+            emit(", ")
+        }
+        v_res[#v_res] = "\n"
+    }
     emit(space() .. "if ")
     emit_expr(node[4])
     emit(" then\n")
