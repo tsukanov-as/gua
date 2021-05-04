@@ -5,32 +5,72 @@ go+lua=gua (experimental programming language)
 
 transpiler from gua:
 ```go
-p := {
-    x: 10,
-    y: 10,
-    color: [255, 0, 0],
+std := _G
+setmt := std.setmetatable
+
+ColorMeta := {
+    __tostring: func(self) {
+        return std::string::format("[%d, %d, %d]", self[1], self[2], self[3])
+    }
 }
-func p.move(dx, dy) {
-    self.x += dx
-    self.y += dy
+
+Point := {
+    x: 0,
+    y: 0,
+    c: setmt([0, 0, 0], ColorMeta),
 }
+
+func (p Point) move(dx, dy) {
+    p.x += dx
+    p.y += dy
+}
+
+PointMeta := {
+    __index: Point,
+    __tostring: func(self) {
+        return std::string::format("x: %d, y: %d, c: %s", self.x, self.y, std::tostring(self.c))
+    }
+}
+
+p := setmt({}, PointMeta)
+p.c[1] = 255
+
 for p.x < 20 {
     p.move(1, 0)
 }
+
+std::print(p)
 ```
 to lua:
 ```lua
-local p = {
-    x = 10;
-    y = 10;
-    color = {255, 0, 0};
+local std = _G
+local setmt = std.setmetatable
+local ColorMeta = {
+    __tostring = function(self)
+        return std.string.format("[%d, %d, %d]", self[1], self[2], self[3])
+    end;
 }
-function p:move(dx, dy)
-    self.x = self.x + dx
-    self.y = self.y + dy
+local Point = {
+    x = 0;
+    y = 0;
+    c = setmt({0, 0, 0}, ColorMeta);
+}
+function Point:move(dx, dy)
+    local p = self
+    p.x = p.x + dx
+    p.y = p.y + dy
 end
+local PointMeta = {
+    __index = Point;
+    __tostring = function(self)
+        return std.string.format("x: %d, y: %d, c: %s", self.x, self.y, std.tostring(self.c))
+    end;
+}
+local p = setmt({}, PointMeta)
+p.c[1] = 255
 while p.x < 20 do
     p:move(1, 0)
 end
+std.print(p)
 ```
 for more examples, see [test.lua](./test.lua)
