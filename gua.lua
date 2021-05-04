@@ -369,113 +369,89 @@ local function scan()
                 p_val = Hex({string_byte(p_lit)})
                 pos = pos + 1;
                 chr = byte(src, pos)
-            elseif case == ":" then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x3D then
-                    tok = ":="
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                elseif chr == 0x3A then
-                    tok = "::"
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == "=" then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x3D then
-                    tok = "=="
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == "+" then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x3D then
-                    tok = "+="
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == "-" then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x3D then
-                    tok = "-="
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == "/" then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x2F then
-                    local beg = pos
-                    repeat
-                        pos = pos + 1;
-                        chr = byte(src, pos)
-                    until chr == 0x0A or chr == nil
-                    p_lit = string_sub(src, beg + 1, pos - 1)
-                    p_comments[p_line] = p_lit
-                    tok = "//"
-                end
-            elseif case == "<" then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x3D then
-                    tok = "<="
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == ">" then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x3D then
-                    tok = ">="
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == "&" then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x26 then
-                    tok = "&&"
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == "|" then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x7C then
-                    tok = "||"
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == "!" then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x3D then
-                    tok = "!="
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == "." then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x2E then
-                    tok = ".."
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                    if chr == 0x2E then
-                        tok = "..."
-                        pos = pos + 1;
-                        chr = byte(src, pos)
-                    end
-                end
             elseif (case == nil) and (chr ~= nil) then
                 errorf("unknown symbol '%c'", chr)
             else
+                local old = chr
                 pos = pos + 1;
                 chr = byte(src, pos)
+                do
+                    local case = chr
+                    if case == 0x3D then
+                        do
+                            local case = old
+                            if case == 0x3A then
+                                tok = ":=";
+                                pos = pos + 1;
+                                chr = byte(src, pos)
+                            elseif case == 0x3D then
+                                tok = "==";
+                                pos = pos + 1;
+                                chr = byte(src, pos)
+                            elseif case == 0x2B then
+                                tok = "+=";
+                                pos = pos + 1;
+                                chr = byte(src, pos)
+                            elseif case == 0x2D then
+                                tok = "-=";
+                                pos = pos + 1;
+                                chr = byte(src, pos)
+                            elseif case == 0x3C then
+                                tok = "<=";
+                                pos = pos + 1;
+                                chr = byte(src, pos)
+                            elseif case == 0x3E then
+                                tok = ">=";
+                                pos = pos + 1;
+                                chr = byte(src, pos)
+                            elseif case == 0x21 then
+                                tok = "!=";
+                                pos = pos + 1;
+                                chr = byte(src, pos)
+                            end
+                        end
+                    elseif case == 0x3A then
+                        if old == 0x3A then
+                            tok = "::"
+                            pos = pos + 1;
+                            chr = byte(src, pos)
+                        end
+                    elseif case == 0x2F then
+                        if old == 0x2F then
+                            local beg = pos
+                            repeat
+                                pos = pos + 1;
+                                chr = byte(src, pos)
+                            until chr == 0x0A or chr == nil
+                            p_lit = string_sub(src, beg + 1, pos - 1)
+                            p_comments[p_line] = p_lit
+                            tok = "//"
+                        end
+                    elseif case == 0x26 then
+                        if old == 0x26 then
+                            tok = "&&"
+                            pos = pos + 1;
+                            chr = byte(src, pos)
+                        end
+                    elseif case == 0x7C then
+                        if old == 0x7C then
+                            tok = "||"
+                            pos = pos + 1;
+                            chr = byte(src, pos)
+                        end
+                    elseif case == 0x2E then
+                        if old == 0x2E then
+                            tok = ".."
+                            pos = pos + 1;
+                            chr = byte(src, pos)
+                            if chr == 0x2E then
+                                tok = "..."
+                                pos = pos + 1;
+                                chr = byte(src, pos)
+                            end
+                        end
+                    end
+                end
             end
         end
     until tok ~= "//"

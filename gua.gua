@@ -395,89 +395,58 @@ func scan() {
             p_lit = string_sub(src, beg+1, pos-1)
             p_val = Hex([string_byte(p_lit)])
             pos += 1; chr = byte(src, pos)
-        case ":":
-            pos += 1; chr = byte(src, pos)
-            if chr == '=' {
-                tok = ":="
-                pos += 1; chr = byte(src, pos)
-            } else if chr == ':' {
-                tok = "::"
-                pos += 1; chr = byte(src, pos)
-            }
-        case "=":
-            pos += 1; chr = byte(src, pos)
-            if chr == '=' {
-                tok = "=="
-                pos += 1; chr = byte(src, pos)
-            }
-        case "+":
-            pos += 1; chr = byte(src, pos)
-            if chr == '=' {
-                tok = "+="
-                pos += 1; chr = byte(src, pos)
-            }
-        case "-":
-            pos += 1; chr = byte(src, pos)
-            if chr == '=' {
-                tok = "-="
-                pos += 1; chr = byte(src, pos)
-            }
-        case "/":
-            pos += 1; chr = byte(src, pos)
-            if chr == '/' {
-                beg := pos
-                for {
-                    pos += 1; chr = byte(src, pos)
-                    break if chr == LF || chr == nil
-                }
-                p_lit = string_sub(src, beg+1, pos-1)
-                p_comments[p_line] = p_lit
-                tok = "//"
-            }
-        case "<":
-            pos += 1; chr = byte(src, pos)
-            if chr == '=' {
-                tok = "<="
-                pos += 1; chr = byte(src, pos)
-            }
-        case ">":
-            pos += 1; chr = byte(src, pos)
-            if chr == '=' {
-                tok = ">="
-                pos += 1; chr = byte(src, pos)
-            }
-        case "&":
-            pos += 1; chr = byte(src, pos)
-            if chr == '&' {
-                tok = "&&"
-                pos += 1; chr = byte(src, pos)
-            }
-        case "|":
-            pos += 1; chr = byte(src, pos)
-            if chr == '|' {
-                tok = "||"
-                pos += 1; chr = byte(src, pos)
-            }
-        case "!":
-            pos += 1; chr = byte(src, pos)
-            if chr == '=' {
-                tok = "!="
-                pos += 1; chr = byte(src, pos)
-            }
-        case ".":
-            pos += 1; chr = byte(src, pos)
-            if chr == '.' {
-                tok = ".."
-                pos += 1; chr = byte(src, pos)
-                if chr == '.' {
-                    tok = "..."
-                    pos += 1; chr = byte(src, pos)
-                }
-            }
         case nil; chr != nil:
             errorf("unknown symbol '%c'", chr)
         default:
+            old := chr
             pos += 1; chr = byte(src, pos)
+            switch chr {
+            case '=':
+                switch old {
+                case ':': tok = ":="; pos += 1; chr = byte(src, pos)
+                case '=': tok = "=="; pos += 1; chr = byte(src, pos)
+                case '+': tok = "+="; pos += 1; chr = byte(src, pos)
+                case '-': tok = "-="; pos += 1; chr = byte(src, pos)
+                case '<': tok = "<="; pos += 1; chr = byte(src, pos)
+                case '>': tok = ">="; pos += 1; chr = byte(src, pos)
+                case '!': tok = "!="; pos += 1; chr = byte(src, pos)
+                }
+            case ':':
+                if old == ':' {
+                    tok = "::"
+                    pos += 1; chr = byte(src, pos)
+                }
+            case '/':
+                if old == '/' {
+                    beg := pos
+                    for {
+                        pos += 1; chr = byte(src, pos)
+                        break if chr == LF || chr == nil
+                    }
+                    p_lit = string_sub(src, beg+1, pos-1)
+                    p_comments[p_line] = p_lit
+                    tok = "//"
+                }
+            case '&':
+                if old == '&' {
+                    tok = "&&"
+                    pos += 1; chr = byte(src, pos)
+                }
+            case '|':
+                if old == '|' {
+                    tok = "||"
+                    pos += 1; chr = byte(src, pos)
+                }
+            case '.':
+                if old == '.' {
+                    tok = ".."
+                    pos += 1; chr = byte(src, pos)
+                    if chr == '.' {
+                        tok = "..."
+                        pos += 1; chr = byte(src, pos)
+                    }
+                }
+            }
         }
         break if tok != "//"
     }
