@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "debug",
+            "name": "debug (lua)",
             "type": "lua-local",
             "request": "launch",
             "program": {
@@ -11,16 +11,16 @@
             }
         },
         {
-            "name": "test",
+            "name": "run (lua)",
             "type": "lua-local",
             "request": "launch",
             "program": {
                 "command": "luajit"
             },
-            "args": ["-joff", "test.lua"]
+            "args": ["-joff", "${file}"]
         },
         {
-            "name": "transpile",
+            "name": "transpile (gua)",
             "type": "lua-local",
             "request": "launch",
             "program": {

@@ -193,8 +193,7 @@ local p_comments = List({})
 local p_vars = {}
 local p_scope = {}
 local p_level = 0
-local p_skip_id_check = false
-local p_skipped_id_name = nil
+local p_left = false
 local p_continue = List({})
 local p_looplevel = 0
 local function errorf(notef, ...)
@@ -498,16 +497,6 @@ local function find_var(name)
     end
     return v, i
 end
-local function assertf(expr, notef, ...)
-    if not expr then
-        if p_path then
-            error(p_path .. ":" .. p_line .. ": " .. string_format(notef, ...), 2)
-        else
-            error(string_format(notef, ...) .. " in line " .. p_line, 2)
-        end
-    end
-    return expr
-end
 local parse_expr = nil
 local parse_table, parse_list = nil, nil
 local function parse_tail(call)
@@ -550,7 +539,9 @@ local function parse_tail(call)
                 tail[i] = item
             elseif case == "[" then
                 scan()
-                assertf(p_tok ~= "]", "expected expression, found ']'")
+                if p_tok == "]" then
+                    errorf("expected expression, found ']'")
+                end
                 local expr = parse_expr()
                 skip("]")
                 i = i + 1
@@ -562,18 +553,17 @@ local function parse_tail(call)
     end
     return i > 0 and tail, call
 end
-local function parse_id()
+local function parse_id(must_exist)
     local pos = p_tokpos
     local name = p_lit
-    local _const = false
-    assertf(not RESERVED[name], "name '%s' is reserved", name)
-    if p_skip_id_check then
-        p_skipped_id_name = name
-        p_skip_id_check = false
-    else
-        local id = assertf(find_var(name), "undeclared variable '%s'", name)
-        _const = id[7]
+    if RESERVED[name] then
+        errorf("name '%s' is reserved", name)
     end
+    local id = find_var(name)
+    if must_exist and not id then
+        errorf("undeclared variable '%s'", name)
+    end
+    local _const = id and id[7] or false
     local call = false
     local args, tail = false, false
     scan()
@@ -649,7 +639,11 @@ parse_list = function()
 end
 local parse_func = nil
 local function parse_operand()
-    local node = nil
+    local node = p_left
+    if node then
+        p_left = false
+        return node
+    end
     do
         local case = p_tok
         if case == "str" then
@@ -658,7 +652,7 @@ local function parse_operand()
             local tail = parse_tail()
             node = Node({"value", pos, len, val, tail})
         elseif case == "id" then
-            node = parse_id()
+            node = parse_id(true)
         elseif case == "(" then
             node = parse_paren()
         elseif case == "{" then
@@ -770,23 +764,49 @@ parse_expr = function()
     return left
 end
 local parse_block, parse_body = nil, nil
+local function check_new_id(check_exist, name, tail, args)
+    if check_exist then
+        local v = find_var(name)
+        if v then
+            if v[7] then
+                errorf("shadowing of constant is prohibited, you need to change the name '%s'", name)
+            else
+                errorf("shadowing of variable is prohibited, you need to change the name '%s'", name)
+            end
+        end
+    end
+    if RESERVED[name] then
+        errorf("name '%s' is reserved", name)
+    end
+    if tail then
+        errorf("unexpected tail after '%s'", name)
+    end
+    if args then
+        errorf("unexpected args after '%s'", name)
+    end
+end
 local function parse_set_or_call()
     local pos = p_tokpos
     local name = p_lit
-    p_skip_id_check = true
     local id, call = parse_id()
     if call then
-        assertf(find_var(name), "undeclared variable '%s'", name)
+        if not find_var(name) then
+            errorf("undeclared variable '%s'", name)
+        end
         return Node({"call", pos, p_endpos - pos, id})
     end
     if p_tok == "+=" then
-        assertf(find_var(name), "undeclared variable '%s'", name)
+        if not find_var(name) then
+            errorf("undeclared variable '%s'", name)
+        end
         scan()
         local expr = parse_add()
         return Node({"inc", pos, p_endpos - pos, id, expr})
     end
     if p_tok == "-=" then
-        assertf(find_var(name), "undeclared variable '%s'", name)
+        if not find_var(name) then
+            errorf("undeclared variable '%s'", name)
+        end
         scan()
         local expr = parse_add()
         return Node({"dec", pos, p_endpos - pos, id, expr})
@@ -795,16 +815,22 @@ local function parse_set_or_call()
     while p_tok == "," do
         scan()
         expect("id")
-        p_skip_id_check = true
         id, call = parse_id()
-        assertf(not call, "unexpected call")
+        if call then
+            errorf("unexpected call")
+        end
         left[#left + 1] = id
     end
     if p_tok == "=" then
         for _, _id in ipairs(left) do
             name = _id[4]
-            local v = assertf(find_var(name), "undeclared variable '%s'", name)
-            assertf(not v[7], "cannot assign to '%s' (declared const)", name)
+            local v = find_var(name)
+            if not v then
+                errorf("undeclared variable '%s'", name)
+            end
+            if v[7] then
+                errorf("cannot assign to '%s' (declared const)", name)
+            end
         end
         scan()
         local right = List({})
@@ -820,17 +846,20 @@ local function parse_set_or_call()
     if p_tok == ":=" then
         local allow = false
         for _, _id in ipairs(left) do
-            assertf(not _id[5], "unexpected tail")
-            assertf(not _id[6], "unexpected call")
-            assertf(not _id[7], "unexpected self")
-            local v, level = find_var(_id[4])
+            name = _id[4]
+            check_new_id(false, name, _id[5], _id[6])
+            local v, level = find_var(name)
             if not v then
                 allow = true
-            elseif level ~= p_level or v[7] then
-                errorf("variable shadowing is prohibited, you need to change the name '%s'", p_skipped_id_name)
+            elseif v[7] then
+                errorf("shadowing of constant is prohibited, you need to change the name '%s'", name)
+            elseif level ~= p_level then
+                errorf("shadowing of variable is prohibited, you need to change the name '%s'", name)
             end
         end
-        assertf(allow, "no new variables on left side of ':='")
+        if not allow then
+            errorf("no new variables on left side of ':='")
+        end
         scan()
         local right = List({})
         while true do
@@ -918,47 +947,71 @@ local function parse_for()
         local body = parse_block(nil, true)
         return Node({"for", pos, p_endpos - pos, false, body})
     end
-    p_skip_id_check = true
-    local expr = parse_expr()
-    if p_tok == "{" or expr[1] ~= "id" or expr[5] or expr[6] then
-        assertf(find_var(p_skipped_id_name), "undeclared variable '%s'", p_skipped_id_name)
+    if p_tok ~= "id" then
+        local expr = parse_expr()
         local body = parse_block(nil, true)
         return Node({"for", pos, p_endpos - pos, expr, body})
     end
-    local vars = {
-        [expr[4]] = expr;
-    }
-    if p_tok == ":=" then
-        assertf(not find_var(p_skipped_id_name), "variable shadowing is prohibited, you need to change the name '%s'", p_skipped_id_name)
-        scan()
-        local from = parse_expr()
-        skip(",")
-        local to = parse_expr()
-        local by = nil
-        if p_tok == "," then
+    local id = parse_id()
+    local id_name = id[4]
+    local ids = nil
+    local vars = nil
+    do
+        local case = p_tok
+        if case == ":=" then
+            check_new_id(true, id_name, id[5], id[6])
+            vars = {
+                [id_name] = id;
+            }
             scan()
-            by = parse_expr()
+            local from = parse_expr()
+            skip(",")
+            local to = parse_expr()
+            local by = nil
+            if p_tok == "," then
+                scan()
+                by = parse_expr()
+            end
+            local body = parse_block(vars, true)
+            return Node({"for_to", pos, p_endpos - pos, id, from, to, by or false, body})
+        elseif case == "," then
+            check_new_id(true, id_name, id[5], id[6])
+            vars = {
+                [id_name] = id;
+            }
+            ids = List({id})
+            while p_tok == "," do
+                scan()
+                expect("id")
+                local name = p_lit
+                check_new_id(true, name)
+                local next_id = Node({"id", p_tokpos, #name, name, false, false})
+                ids[#ids + 1] = next_id
+                if vars[name] then
+                    errorf("re-declaring variable '%s'", name)
+                end
+                vars[name] = next_id
+                scan()
+            end
+            skip("in")
+        elseif case == "in" then
+            check_new_id(true, id_name, id[5], id[6])
+            vars = {
+                [id_name] = id;
+            }
+            ids = List({id})
+            scan()
+        else
+            p_left = id
+            local expr = parse_expr()
+            if not find_var(id_name) then
+                errorf("undeclared variable '%s'", id_name)
+            end
+            local body = parse_block(nil, true)
+            return Node({"for", pos, p_endpos - pos, expr, body})
         end
-        local body = parse_block(vars, true)
-        return Node({"for_to", pos, p_endpos - pos, expr, from, to, by or false, body})
     end
-    assertf(not find_var(p_skipped_id_name), "variable shadowing is prohibited, you need to change the name '%s'", p_skipped_id_name)
-    local ids = List({expr})
-    while p_tok == "," do
-        scan()
-        expect("id")
-        local name = p_lit
-        assertf(not RESERVED[name], "name '%s' is reserved", name)
-        assertf(not find_var(name), "variable shadowing is prohibited, you need to change the name '%s'", name)
-        local id = Node({"id", p_tokpos, #name, name, false, false})
-        ids[#ids + 1] = id
-        assertf(vars[name] == nil, "re-declaring variable '%s'", name)
-        vars[name] = id
-        scan()
-    end
-    expect("in")
     local ins = List({})
-    scan()
     ins[#ins + 1] = parse_expr()
     if p_tok == "," then
         scan()
@@ -1009,38 +1062,45 @@ local function parse_continue()
     p_continue[p_looplevel] = true
     return Node({"continue", pos, 8})
 end
+local function parse_const_item()
+    local name = p_lit
+    if RESERVED[name] then
+        errorf("name '%s' is reserved", name)
+    end
+    local v = find_var(name)
+    if v then
+        if v[7] then
+            errorf("shadowing of constant is prohibited, you need to change the name '%s'", name)
+        else
+            errorf("shadowing of variable is prohibited, you need to change the name '%s'", name)
+        end
+    end
+    local id = Node({"id", p_tokpos, #name, name, false, false, nil})
+    scan()
+    skip("=")
+    if not LITERALS[p_tok] then
+        errorf("expected value")
+    end
+    id[7] = Node({"value", p_tokpos, #p_lit, p_val})
+    p_vars[name] = id
+    scan()
+    return id
+end
 local function parse_const()
     local pos = p_tokpos
     skip("const")
     if p_tok == "id" then
-        local name = p_lit
-        assertf(not RESERVED[name], "name '%s' is reserved", name)
-        assertf(not find_var(name), "variable shadowing is prohibited, you need to change the name '%s'", name)
-        local id = Node({"id", p_tokpos, #name, name, false, false, nil})
-        local list = List({id})
-        scan()
-        skip("=")
-        assertf(LITERALS[p_tok], "expected value")
-        id[7] = Node({"value", p_tokpos, #p_lit, p_val})
-        p_vars[name] = id
-        scan()
+        local list = List({parse_const_item()})
         return Node({"const", pos, p_endpos - pos, list})
     end
     if p_tok == "(" then
         scan()
         local list = List({})
         while p_tok == "id" do
-            local name = p_lit
-            assertf(not RESERVED[name], "name '%s' is reserved", name)
-            assertf(not find_var(name), "variable shadowing is prohibited, you need to change the name '%s'", name)
-            local id = Node({"id", p_tokpos, #name, name, false, false, nil})
-            list[#list + 1] = id
-            scan()
-            skip("=")
-            assertf(LITERALS[p_tok], "expected value")
-            id[7] = Node({"value", p_tokpos, #p_lit, p_val})
-            p_vars[name] = id
-            scan()
+            list[#list + 1] = parse_const_item()
+            if p_tok == ";" then
+                scan()
+            end
         end
         skip(")")
         return Node({"const", pos, p_endpos - pos, list})
@@ -1064,7 +1124,9 @@ local function parse_params()
         end
         local id = Node({"param", p_tokpos, #p_lit, p_lit})
         list[#list + 1] = id
-        assertf(p_vars[p_lit] == nil, "parameter '%s' is already declared", p_lit)
+        if p_vars[p_lit] then
+            errorf("parameter '%s' is already declared", p_lit)
+        end
         p_vars[p_lit] = id
         scan()
         if p_tok ~= "," then
@@ -1090,7 +1152,9 @@ parse_func = function(lambda)
             dot = true
             scan()
             expect("id")
-            assertf(find_var(name), "undeclared variable '%s'", name)
+            if not find_var(name) then
+                errorf("undeclared variable '%s'", name)
+            end
             receiver = name
             name = p_lit
             scan()
@@ -1100,12 +1164,14 @@ parse_func = function(lambda)
         elseif p_tok == "::" then
             scan()
             expect("id")
-            assertf(find_var(name), "undeclared variable '%s'", name)
+            if not find_var(name) then
+                errorf("undeclared variable '%s'", name)
+            end
             receiver = name
             name = p_lit
             scan()
-        else
-            assertf(not find_var(name), "re-declaring variable '%s'", name)
+        elseif find_var(name) then
+            errorf("re-declaring variable '%s'", name)
         end
         p_vars[name] = {}
     end
