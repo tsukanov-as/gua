@@ -150,7 +150,8 @@ nodes := {
     "break"    : Fields(["Type", "Pos", "Len", "Expr"]),
     "continue" : Fields(["Type", "Pos", "Len"]),
     "label"    : Fields(["Type", "Pos", "Len", "Name"]),
-    "func"     : Fields(["Type", "Pos", "Len", "Name", "Params", "Body", "Receiver", "Dot"]),
+    "func"     : Fields(["Type", "Pos", "Len", "Name", "Params", "Body", "Receiver"]),
+    "receiver" : Fields(["Type", "Pos", "Len", "Name", "ID"]),
     "nop"      : Fields(["Type", "Pos", "Len"]),
     "vararg"   : Fields(["Type", "Pos", "Len"]),
     "param"    : Fields(["Type", "Pos", "Len", "Name"]),
@@ -1215,43 +1216,42 @@ parse_func = func(lambda) {
     pos := p_tokpos
     name := false
     receiver := false
-    dot := false
     vars := nil
     skip("func")
     if !lambda {
+        if p_tok == "(" {
+            receiver_pos := p_tokpos
+            scan()
+            expect("id")
+            receiver_name := p_lit
+            scan()
+            expect("id")
+            receiver_type := p_lit
+            id := find_var(receiver_type)
+            if !id {
+                errorf("undeclared variable '%s'", receiver_type)
+            }
+            if id[7] {
+                errorf("'%s' is a constant", receiver_type)
+            }
+            scan()
+            skip(")")
+            receiver = Node(["receiver", receiver_pos, p_endpos-receiver_pos, receiver_name, receiver_type])
+            vars = {
+                ["self"]: Node(["id", 0, 0, "self", false, false]),
+                [receiver_name]: Node(["id", 0, 0, "receiver_name", false, false]),
+            }
+        }
         expect("id")
         name = p_lit
         scan()
-        if p_tok == "." {
-            dot = true
-            scan()
-            expect("id")
-            if !find_var(name) {
-                errorf("undeclared variable '%s'", name)
-            }
-            receiver = name
-            name = p_lit
-            scan()
-            vars = {"self": Node(["id", 0, 0, "self", false, false])}
-        } else if p_tok == "::" {
-            scan()
-            expect("id")
-            if !find_var(name) {
-                errorf("undeclared variable '%s'", name)
-            }
-            receiver = name
-            name = p_lit
-            scan()
-        } else if find_var(name) {
-            errorf("re-declaring variable '%s'", name)
-        }
         p_vars[name] = {} // hack for recursion
     }
     open_scope(vars)
     params := parse_params()
     body := parse_block()
     close_scope()
-    node := Node(["func", pos, p_endpos-pos, name, params, body, receiver, dot])
+    node := Node(["func", pos, p_endpos-pos, name, params, body, receiver])
     if !lambda {
         p_vars[name] = node
     }
@@ -1830,18 +1830,20 @@ func emit_params(node) {
 }
 
 emit_func = func(node, lambda) {
+    receiver := node[7]
     if lambda {
         emit("function")
-    } else if node[7] {
-        if node[8] {
-            emit(space() .. "function " .. node[7] .. ":" .. node[4])
-        } else {
-            emit(space() .. "function " .. node[7] .. "." .. node[4])
-        }
+        emit_params(node[5])
+    } else if receiver {
+        emit(space() .. "function " .. receiver[5] .. ":" .. node[4])
+        emit_params(node[5])
+        v_level += 1
+        emit(space() .. "local " .. receiver[4] .. " = self\n")
+        v_level -= 1
     } else {
         emit(space() .. "local function " .. node[4])
+        emit_params(node[5])
     }
-    emit_params(node[5])
     emit_block(node[6])
     emit(space() .. "end")
     if !lambda {

@@ -99,35 +99,26 @@ test "func_02"
 
 test "func_03"
 [[
-    x := {
+    Record := {
         field: 1
     }
-    func x.foo(p1, p2) {
-        self.bar(p2, p1)
+    func (r Record) foo(p1, p2) {
+        r.bar(p2, p1)
     }
 ]]
 [[
-    local x = {
+    local Record = {
         field = 1;
     }
-    function x:foo(p1, p2)
-        self:bar(p2, p1)
+    function Record:foo(p1, p2)
+        local r = self
+        r:bar(p2, p1)
     end
 ]]
 
 test "func_04"
-[[
-    x := []
-    func x::foo(y) {
-        print(y)
-    }
-]]
-[[
-    local x = {}
-    function x.foo(y)
-        print(y)
-    end
-]]
+[[]]
+[[]]
 
 test "func_05"
 [[

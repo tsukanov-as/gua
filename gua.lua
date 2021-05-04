@@ -120,7 +120,8 @@ local nodes = {
     ["break"] = Fields({"Type", "Pos", "Len", "Expr"});
     ["continue"] = Fields({"Type", "Pos", "Len"});
     ["label"] = Fields({"Type", "Pos", "Len", "Name"});
-    ["func"] = Fields({"Type", "Pos", "Len", "Name", "Params", "Body", "Receiver", "Dot"});
+    ["func"] = Fields({"Type", "Pos", "Len", "Name", "Params", "Body", "Receiver"});
+    ["receiver"] = Fields({"Type", "Pos", "Len", "Name", "ID"});
     ["nop"] = Fields({"Type", "Pos", "Len"});
     ["vararg"] = Fields({"Type", "Pos", "Len"});
     ["param"] = Fields({"Type", "Pos", "Len", "Name"});
@@ -1185,45 +1186,42 @@ parse_func = function(lambda)
     local pos = p_tokpos
     local name = false
     local receiver = false
-    local dot = false
     local vars = nil
     skip("func")
     if not lambda then
+        if p_tok == "(" then
+            local receiver_pos = p_tokpos
+            scan()
+            expect("id")
+            local receiver_name = p_lit
+            scan()
+            expect("id")
+            local receiver_type = p_lit
+            local id = find_var(receiver_type)
+            if not id then
+                errorf("undeclared variable '%s'", receiver_type)
+            end
+            if id[7] then
+                errorf("'%s' is a constant", receiver_type)
+            end
+            scan()
+            skip(")")
+            receiver = Node({"receiver", receiver_pos, p_endpos - receiver_pos, receiver_name, receiver_type})
+            vars = {
+                ["self"] = Node({"id", 0, 0, "self", false, false});
+                [receiver_name] = Node({"id", 0, 0, "receiver_name", false, false});
+            }
+        end
         expect("id")
         name = p_lit
         scan()
-        if p_tok == "." then
-            dot = true
-            scan()
-            expect("id")
-            if not find_var(name) then
-                errorf("undeclared variable '%s'", name)
-            end
-            receiver = name
-            name = p_lit
-            scan()
-            vars = {
-                ["self"] = Node({"id", 0, 0, "self", false, false});
-            }
-        elseif p_tok == "::" then
-            scan()
-            expect("id")
-            if not find_var(name) then
-                errorf("undeclared variable '%s'", name)
-            end
-            receiver = name
-            name = p_lit
-            scan()
-        elseif find_var(name) then
-            errorf("re-declaring variable '%s'", name)
-        end
         p_vars[name] = {}
     end
     open_scope(vars)
     local params = parse_params()
     local body = parse_block()
     close_scope()
-    local node = Node({"func", pos, p_endpos - pos, name, params, body, receiver, dot})
+    local node = Node({"func", pos, p_endpos - pos, name, params, body, receiver})
     if not lambda then
         p_vars[name] = node
     end
@@ -1766,18 +1764,20 @@ local function emit_params(node)
     emit("(" .. table_concat(t, ", ") .. ")\n")
 end
 emit_func = function(node, lambda)
+    local receiver = node[7]
     if lambda then
         emit("function")
-    elseif node[7] then
-        if node[8] then
-            emit(space() .. "function " .. node[7] .. ":" .. node[4])
-        else
-            emit(space() .. "function " .. node[7] .. "." .. node[4])
-        end
+        emit_params(node[5])
+    elseif receiver then
+        emit(space() .. "function " .. receiver[5] .. ":" .. node[4])
+        emit_params(node[5])
+        v_level = v_level + 1
+        emit(space() .. "local " .. receiver[4] .. " = self\n")
+        v_level = v_level - 1
     else
         emit(space() .. "local function " .. node[4])
+        emit_params(node[5])
     end
-    emit_params(node[5])
     emit_block(node[6])
     emit(space() .. "end")
     if not lambda then
