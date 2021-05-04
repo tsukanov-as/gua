@@ -223,232 +223,224 @@ local function scan()
             tok = MAP[chr]
         end
         p_tokpos = pos
-        do
-            local case = tok
-            if case == 1 then
-                local AD = ALPHA_OR_DIGIT
-                local beg = pos
-                repeat
-                    pos = pos + 1;
-                    chr = byte(src, pos);
-                until not AD[chr]
-                p_lit = string_sub(src, beg, pos - 1)
-                tok = KEYWORDS[p_lit] or "id"
-                if tok == "true" then
-                    p_val = true
-                elseif tok == "false" then
-                    p_val = false
-                end
-            elseif case == 2 then
-                local beg = pos
-                local base = 10
-                if chr == 0x30 then
+        local case = tok
+        if case == 1 then
+            local AD = ALPHA_OR_DIGIT
+            local beg = pos
+            repeat
+                pos = pos + 1;
+                chr = byte(src, pos);
+            until not AD[chr]
+            p_lit = string_sub(src, beg, pos - 1)
+            tok = KEYWORDS[p_lit] or "id"
+            if tok == "true" then
+                p_val = true
+            elseif tok == "false" then
+                p_val = false
+            end
+        elseif case == 2 then
+            local beg = pos
+            local base = 10
+            if chr == 0x30 then
+                pos = pos + 1;
+                chr = byte(src, pos)
+                local case = chr
+                if case == 0x58 or case == 0x78 then
                     pos = pos + 1;
                     chr = byte(src, pos)
-                    do
-                        local case = chr
-                        if case == 0x58 or case == 0x78 then
-                            pos = pos + 1;
-                            chr = byte(src, pos)
-                            beg = pos
-                            if not HEX[chr] then
-                                errorf("expected hex digit, found '%c'", chr)
-                            end
-                            repeat
-                                pos = pos + 1;
-                                chr = byte(src, pos)
-                            until not HEX[chr]
-                            base = 16
-                            if pos - beg > 8 then
-                                errorf("integer greater than 32 bits", tok)
-                            end
-                        elseif case == 0x42 or case == 0x62 then
-                            pos = pos + 1;
-                            chr = byte(src, pos)
-                            beg = pos
-                            if chr ~= 0x30 and chr ~= 0x31 then
-                                errorf("expected bin digit, found '%c'", chr)
-                            end
-                            repeat
-                                pos = pos + 1;
-                                chr = byte(src, pos)
-                            until chr ~= 0x30 and chr ~= 0x31
-                            base = 2
-                            if pos - beg > 32 then
-                                errorf("integer greater than 32 bits", tok)
-                            end
-                        end
+                    beg = pos
+                    if not HEX[chr] then
+                        errorf("expected hex digit, found '%c'", chr)
+                    end
+                    repeat
+                        pos = pos + 1;
+                        chr = byte(src, pos)
+                    until not HEX[chr]
+                    base = 16
+                    if pos - beg > 8 then
+                        errorf("integer greater than 32 bits", tok)
+                    end
+                elseif case == 0x42 or case == 0x62 then
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                    beg = pos
+                    if chr ~= 0x30 and chr ~= 0x31 then
+                        errorf("expected bin digit, found '%c'", chr)
+                    end
+                    repeat
+                        pos = pos + 1;
+                        chr = byte(src, pos)
+                    until chr ~= 0x30 and chr ~= 0x31
+                    base = 2
+                    if pos - beg > 32 then
+                        errorf("integer greater than 32 bits", tok)
                     end
                 end
-                if base == 10 then
-                    while MAP[chr] == 2 do
+            end
+            if base == 10 then
+                while MAP[chr] == 2 do
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                end
+                if chr == 0x2E then
+                    repeat
+                        pos = pos + 1;
+                        chr = byte(src, pos)
+                    until MAP[chr] ~= 2
+                end
+                if chr == 0x45 or chr == 0x65 then
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                    if chr == 0x2B or chr == 0x2D then
                         pos = pos + 1;
                         chr = byte(src, pos)
                     end
-                    if chr == 0x2E then
-                        repeat
-                            pos = pos + 1;
-                            chr = byte(src, pos)
-                        until MAP[chr] ~= 2
+                    if MAP[chr] ~= 2 then
+                        errorf("expected digit, found '%s'", tok)
                     end
-                    if chr == 0x45 or chr == 0x65 then
+                    repeat
                         pos = pos + 1;
                         chr = byte(src, pos)
-                        if chr == 0x2B or chr == 0x2D then
-                            pos = pos + 1;
-                            chr = byte(src, pos)
-                        end
-                        if MAP[chr] ~= 2 then
-                            errorf("expected digit, found '%s'", tok)
-                        end
-                        repeat
-                            pos = pos + 1;
-                            chr = byte(src, pos)
-                        until MAP[chr] ~= 2
-                    end
+                    until MAP[chr] ~= 2
                 end
-                tok = "num"
-                p_lit = string_sub(src, beg, pos - 1)
-                if base == 10 then
-                    p_val = tonumber(p_lit)
-                else
-                    p_val = Hex({tonumber(p_lit, base)})
-                end
-                if p_val == nil then
-                    errorf("malformed number '%s'", p_lit)
-                end
-            elseif case == "str" then
-                local beg = pos
-                repeat
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                    if chr == 0x5C then
-                        pos = pos + 2;
-                        chr = byte(src, pos)
-                    end
-                until chr == 0x22 or chr == 0x0A or chr == nil
-                if chr ~= 0x22 then
-                    errorf("expected \", found EOL")
-                end
-                p_lit = string_sub(src, beg + 1, pos - 1)
-                p_val = p_lit
-                pos = pos + 1;
-                chr = byte(src, pos)
-            elseif case == "raw" then
-                local beg = pos
-                repeat
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                    if chr == 0x0A then
-                        p_line = p_line + 1
-                    end
-                until chr == 0x60 or chr == nil
-                if chr ~= 0x60 then
-                    errorf("expected `, found '%c'", chr)
-                end
-                p_lit = string_sub(src, beg + 1, pos - 1)
-                p_val = Raw({p_lit})
-                pos = pos + 1;
-                chr = byte(src, pos)
-            elseif case == "chr" then
-                local beg = pos
+            end
+            tok = "num"
+            p_lit = string_sub(src, beg, pos - 1)
+            if base == 10 then
+                p_val = tonumber(p_lit)
+            else
+                p_val = Hex({tonumber(p_lit, base)})
+            end
+            if p_val == nil then
+                errorf("malformed number '%s'", p_lit)
+            end
+        elseif case == "str" then
+            local beg = pos
+            repeat
                 pos = pos + 1;
                 chr = byte(src, pos)
                 if chr == 0x5C then
-                    beg = pos
+                    pos = pos + 2;
+                    chr = byte(src, pos)
+                end
+            until chr == 0x22 or chr == 0x0A or chr == nil
+            if chr ~= 0x22 then
+                errorf("expected \", found EOL")
+            end
+            p_lit = string_sub(src, beg + 1, pos - 1)
+            p_val = p_lit
+            pos = pos + 1;
+            chr = byte(src, pos)
+        elseif case == "raw" then
+            local beg = pos
+            repeat
+                pos = pos + 1;
+                chr = byte(src, pos)
+                if chr == 0x0A then
+                    p_line = p_line + 1
+                end
+            until chr == 0x60 or chr == nil
+            if chr ~= 0x60 then
+                errorf("expected `, found '%c'", chr)
+            end
+            p_lit = string_sub(src, beg + 1, pos - 1)
+            p_val = Raw({p_lit})
+            pos = pos + 1;
+            chr = byte(src, pos)
+        elseif case == "chr" then
+            local beg = pos
+            pos = pos + 1;
+            chr = byte(src, pos)
+            if chr == 0x5C then
+                beg = pos
+                pos = pos + 1;
+                chr = byte(src, pos)
+            end
+            pos = pos + 1;
+            chr = byte(src, pos)
+            if chr ~= 0x27 then
+                errorf("expected ', found '%c'", chr)
+            end
+            p_lit = string_sub(src, beg + 1, pos - 1)
+            p_val = Hex({string_byte(p_lit)})
+            pos = pos + 1;
+            chr = byte(src, pos)
+        elseif (case == nil) and (chr ~= nil) then
+            errorf("unknown symbol '%c'", chr)
+        else
+            local old = chr
+            pos = pos + 1;
+            chr = byte(src, pos)
+            local case = chr
+            if case == 0x3D then
+                local case = old
+                if case == 0x3A then
+                    tok = ":=";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x3D then
+                    tok = "==";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x2B then
+                    tok = "+=";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x2D then
+                    tok = "-=";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x3C then
+                    tok = "<=";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x3E then
+                    tok = ">=";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x21 then
+                    tok = "!=";
                     pos = pos + 1;
                     chr = byte(src, pos)
                 end
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr ~= 0x27 then
-                    errorf("expected ', found '%c'", chr)
+            elseif case == 0x3A then
+                if old == 0x3A then
+                    tok = "::"
+                    pos = pos + 1;
+                    chr = byte(src, pos)
                 end
-                p_lit = string_sub(src, beg + 1, pos - 1)
-                p_val = Hex({string_byte(p_lit)})
-                pos = pos + 1;
-                chr = byte(src, pos)
-            elseif (case == nil) and (chr ~= nil) then
-                errorf("unknown symbol '%c'", chr)
-            else
-                local old = chr
-                pos = pos + 1;
-                chr = byte(src, pos)
-                do
-                    local case = chr
-                    if case == 0x3D then
-                        do
-                            local case = old
-                            if case == 0x3A then
-                                tok = ":=";
-                                pos = pos + 1;
-                                chr = byte(src, pos)
-                            elseif case == 0x3D then
-                                tok = "==";
-                                pos = pos + 1;
-                                chr = byte(src, pos)
-                            elseif case == 0x2B then
-                                tok = "+=";
-                                pos = pos + 1;
-                                chr = byte(src, pos)
-                            elseif case == 0x2D then
-                                tok = "-=";
-                                pos = pos + 1;
-                                chr = byte(src, pos)
-                            elseif case == 0x3C then
-                                tok = "<=";
-                                pos = pos + 1;
-                                chr = byte(src, pos)
-                            elseif case == 0x3E then
-                                tok = ">=";
-                                pos = pos + 1;
-                                chr = byte(src, pos)
-                            elseif case == 0x21 then
-                                tok = "!=";
-                                pos = pos + 1;
-                                chr = byte(src, pos)
-                            end
-                        end
-                    elseif case == 0x3A then
-                        if old == 0x3A then
-                            tok = "::"
-                            pos = pos + 1;
-                            chr = byte(src, pos)
-                        end
-                    elseif case == 0x2F then
-                        if old == 0x2F then
-                            local beg = pos
-                            repeat
-                                pos = pos + 1;
-                                chr = byte(src, pos)
-                            until chr == 0x0A or chr == nil
-                            p_lit = string_sub(src, beg + 1, pos - 1)
-                            p_comments[p_line] = p_lit
-                            tok = "//"
-                        end
-                    elseif case == 0x26 then
-                        if old == 0x26 then
-                            tok = "&&"
-                            pos = pos + 1;
-                            chr = byte(src, pos)
-                        end
-                    elseif case == 0x7C then
-                        if old == 0x7C then
-                            tok = "||"
-                            pos = pos + 1;
-                            chr = byte(src, pos)
-                        end
-                    elseif case == 0x2E then
-                        if old == 0x2E then
-                            tok = ".."
-                            pos = pos + 1;
-                            chr = byte(src, pos)
-                            if chr == 0x2E then
-                                tok = "..."
-                                pos = pos + 1;
-                                chr = byte(src, pos)
-                            end
-                        end
+            elseif case == 0x2F then
+                if old == 0x2F then
+                    local beg = pos
+                    repeat
+                        pos = pos + 1;
+                        chr = byte(src, pos)
+                    until chr == 0x0A or chr == nil
+                    p_lit = string_sub(src, beg + 1, pos - 1)
+                    p_comments[p_line] = p_lit
+                    tok = "//"
+                end
+            elseif case == 0x26 then
+                if old == 0x26 then
+                    tok = "&&"
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                end
+            elseif case == 0x7C then
+                if old == 0x7C then
+                    tok = "||"
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                end
+            elseif case == 0x2E then
+                if old == 0x2E then
+                    tok = ".."
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                    if chr == 0x2E then
+                        tok = "..."
+                        pos = pos + 1;
+                        chr = byte(src, pos)
                     end
                 end
             end
@@ -504,51 +496,49 @@ local function parse_tail(call)
     while true do
         local pos = p_tokpos
         local dot = (p_tok == ".")
-        do
-            local case = p_tok
-            if case == "." or case == "::" then
-                scan()
-                if KEYWORDS[p_lit] == nil then
-                    expect("id")
-                end
-                local name = p_lit
-                local args = false
-                local last = p_tokpos
-                scan()
-                if p_tok == "(" then
-                    scan()
-                    args = List({})
-                    while p_tok ~= ")" do
-                        args[#args + 1] = parse_expr()
-                        if p_tok ~= "," then
-                            break
-                        end
-                        scan()
-                    end
-                    last = p_tokpos
-                    skip(")")
-                    call = true
-                else
-                    call = false
-                end
-                if args and dot and (KEYWORDS[name] or RESERVED[name]) then
-                    errorf("name '%s' cannot be used in a method call", name)
-                end
-                local item = Node({"field", pos, last - pos, args or false, name, dot})
-                i = i + 1
-                tail[i] = item
-            elseif case == "[" then
-                scan()
-                if p_tok == "]" then
-                    errorf("expected expression, found ']'")
-                end
-                local expr = parse_expr()
-                skip("]")
-                i = i + 1
-                tail[i] = Node({"index", pos, p_endpos - pos, expr})
-            else
-                break
+        local case = p_tok
+        if case == "." or case == "::" then
+            scan()
+            if KEYWORDS[p_lit] == nil then
+                expect("id")
             end
+            local name = p_lit
+            local args = false
+            local last = p_tokpos
+            scan()
+            if p_tok == "(" then
+                scan()
+                args = List({})
+                while p_tok ~= ")" do
+                    args[#args + 1] = parse_expr()
+                    if p_tok ~= "," then
+                        break
+                    end
+                    scan()
+                end
+                last = p_tokpos
+                skip(")")
+                call = true
+            else
+                call = false
+            end
+            if args and dot and (KEYWORDS[name] or RESERVED[name]) then
+                errorf("name '%s' cannot be used in a method call", name)
+            end
+            local item = Node({"field", pos, last - pos, args or false, name, dot})
+            i = i + 1
+            tail[i] = item
+        elseif case == "[" then
+            scan()
+            if p_tok == "]" then
+                errorf("expected expression, found ']'")
+            end
+            local expr = parse_expr()
+            skip("]")
+            i = i + 1
+            tail[i] = Node({"index", pos, p_endpos - pos, expr})
+        else
+            break
         end
     end
     return i > 0 and tail, call
@@ -644,33 +634,31 @@ local function parse_operand()
         p_left = false
         return node
     end
-    do
-        local case = p_tok
-        if case == "str" then
-            local pos, len, val = p_tokpos, #p_lit, p_val
-            scan()
-            local tail = parse_tail()
-            node = Node({"value", pos, len, val, tail})
-        elseif case == "id" then
-            node = parse_id(true)
-        elseif case == "(" then
-            node = parse_paren()
-        elseif case == "{" then
-            node = parse_table()
-        elseif case == "[" then
-            node = parse_list()
-        elseif case == "func" then
-            node = parse_func(true)
-        elseif case == "..." then
-            node = Node({"vararg", p_tokpos, 3})
+    local case = p_tok
+    if case == "str" then
+        local pos, len, val = p_tokpos, #p_lit, p_val
+        scan()
+        local tail = parse_tail()
+        node = Node({"value", pos, len, val, tail})
+    elseif case == "id" then
+        node = parse_id(true)
+    elseif case == "(" then
+        node = parse_paren()
+    elseif case == "{" then
+        node = parse_table()
+    elseif case == "[" then
+        node = parse_list()
+    elseif case == "func" then
+        node = parse_func(true)
+    elseif case == "..." then
+        node = Node({"vararg", p_tokpos, 3})
+        scan()
+    else
+        if LITERALS[p_tok] then
+            node = Node({"value", p_tokpos, #p_lit, p_val})
             scan()
         else
-            if LITERALS[p_tok] then
-                node = Node({"value", p_tokpos, #p_lit, p_val})
-                scan()
-            else
-                errorf("expected operand, found '%s'", p_tok)
-            end
+            errorf("expected operand, found '%s'", p_tok)
         end
     end
     return node
@@ -901,42 +889,40 @@ parse_if = function()
     local id_name = id[4]
     local vars = nil
     local left = nil
-    do
-        local case = p_tok
-        if case == ":=" then
-            check_new_id(true, id_name, id[5], id[6])
-            vars = {
-                [id_name] = id;
-            }
-            left = List({id})
+    local case = p_tok
+    if case == ":=" then
+        check_new_id(true, id_name, id[5], id[6])
+        vars = {
+            [id_name] = id;
+        }
+        left = List({id})
+        scan()
+    elseif case == "," then
+        check_new_id(true, id_name, id[5], id[6])
+        vars = {
+            [id_name] = id;
+        }
+        left = List({id})
+        while p_tok == "," do
             scan()
-        elseif case == "," then
-            check_new_id(true, id_name, id[5], id[6])
-            vars = {
-                [id_name] = id;
-            }
-            left = List({id})
-            while p_tok == "," do
-                scan()
-                expect("id")
-                local name = p_lit
-                check_new_id(true, name)
-                local next_id = Node({"id", p_tokpos, #name, name, false, false})
-                left[#left + 1] = next_id
-                if vars[name] then
-                    errorf("re-declaring variable '%s'", name)
-                end
-                vars[name] = next_id
-                scan()
+            expect("id")
+            local name = p_lit
+            check_new_id(true, name)
+            local next_id = Node({"id", p_tokpos, #name, name, false, false})
+            left[#left + 1] = next_id
+            if vars[name] then
+                errorf("re-declaring variable '%s'", name)
             end
-            skip(":=")
-        else
-            if not find_var(id_name) then
-                errorf("undeclared variable '%s'", id_name)
-            end
-            p_left = id
-            return continue_parse_if(pos)
+            vars[name] = next_id
+            scan()
         end
+        skip(":=")
+    else
+        if not find_var(id_name) then
+            errorf("undeclared variable '%s'", id_name)
+        end
+        p_left = id
+        return continue_parse_if(pos)
     end
     local right = List({})
     while true do
@@ -1016,60 +1002,58 @@ local function parse_for()
     local id_name = id[4]
     local ids = nil
     local vars = nil
-    do
-        local case = p_tok
-        if case == ":=" then
-            check_new_id(true, id_name, id[5], id[6])
-            vars = {
-                [id_name] = id;
-            }
+    local case = p_tok
+    if case == ":=" then
+        check_new_id(true, id_name, id[5], id[6])
+        vars = {
+            [id_name] = id;
+        }
+        scan()
+        local from = parse_expr()
+        skip(",")
+        local to = parse_expr()
+        local by = nil
+        if p_tok == "," then
             scan()
-            local from = parse_expr()
-            skip(",")
-            local to = parse_expr()
-            local by = nil
-            if p_tok == "," then
-                scan()
-                by = parse_expr()
-            end
-            local body = parse_block(vars, true)
-            return Node({"for_to", pos, p_endpos - pos, id, from, to, by or false, body})
-        elseif case == "," then
-            check_new_id(true, id_name, id[5], id[6])
-            vars = {
-                [id_name] = id;
-            }
-            ids = List({id})
-            while p_tok == "," do
-                scan()
-                expect("id")
-                local name = p_lit
-                check_new_id(true, name)
-                local next_id = Node({"id", p_tokpos, #name, name, false, false})
-                ids[#ids + 1] = next_id
-                if vars[name] then
-                    errorf("re-declaring variable '%s'", name)
-                end
-                vars[name] = next_id
-                scan()
-            end
-            skip("in")
-        elseif case == "in" then
-            check_new_id(true, id_name, id[5], id[6])
-            vars = {
-                [id_name] = id;
-            }
-            ids = List({id})
-            scan()
-        else
-            p_left = id
-            local expr = parse_expr()
-            if not find_var(id_name) then
-                errorf("undeclared variable '%s'", id_name)
-            end
-            local body = parse_block(nil, true)
-            return Node({"for", pos, p_endpos - pos, expr, body})
+            by = parse_expr()
         end
+        local body = parse_block(vars, true)
+        return Node({"for_to", pos, p_endpos - pos, id, from, to, by or false, body})
+    elseif case == "," then
+        check_new_id(true, id_name, id[5], id[6])
+        vars = {
+            [id_name] = id;
+        }
+        ids = List({id})
+        while p_tok == "," do
+            scan()
+            expect("id")
+            local name = p_lit
+            check_new_id(true, name)
+            local next_id = Node({"id", p_tokpos, #name, name, false, false})
+            ids[#ids + 1] = next_id
+            if vars[name] then
+                errorf("re-declaring variable '%s'", name)
+            end
+            vars[name] = next_id
+            scan()
+        end
+        skip("in")
+    elseif case == "in" then
+        check_new_id(true, id_name, id[5], id[6])
+        vars = {
+            [id_name] = id;
+        }
+        ids = List({id})
+        scan()
+    else
+        p_left = id
+        local expr = parse_expr()
+        if not find_var(id_name) then
+            errorf("undeclared variable '%s'", id_name)
+        end
+        local body = parse_block(nil, true)
+        return Node({"for", pos, p_endpos - pos, expr, body})
     end
     local ins = List({})
     ins[#ins + 1] = parse_expr()
@@ -1246,32 +1230,30 @@ parse_func = function(lambda)
     return node
 end
 local function parse_statement()
-    do
-        local case = p_tok
-        if case == "id" then
-            return parse_set_or_call()
-        elseif case == "func" then
-            return parse_func()
-        elseif case == "if" then
-            return parse_if()
-        elseif case == "{" then
-            return parse_block()
-        elseif case == "for" then
-            return parse_for()
-        elseif case == "return" then
-            return parse_return()
-        elseif case == "break" then
-            return parse_break()
-        elseif case == "continue" then
-            return parse_continue()
-        elseif case == "switch" then
-            return parse_switch()
-        elseif case == "const" then
-            return parse_const()
-        elseif case == ";" then
-            scan()
-            return Node({"nop", p_curpos, 1})
-        end
+    local case = p_tok
+    if case == "id" then
+        return parse_set_or_call()
+    elseif case == "func" then
+        return parse_func()
+    elseif case == "if" then
+        return parse_if()
+    elseif case == "{" then
+        return parse_block()
+    elseif case == "for" then
+        return parse_for()
+    elseif case == "return" then
+        return parse_return()
+    elseif case == "break" then
+        return parse_break()
+    elseif case == "continue" then
+        return parse_continue()
+    elseif case == "switch" then
+        return parse_switch()
+    elseif case == "const" then
+        return parse_const()
+    elseif case == ";" then
+        scan()
+        return Node({"nop", p_curpos, 1})
     end
     return nil
 end
@@ -1504,29 +1486,27 @@ local function emit_binop(node)
 end
 local emit_func = nil
 emit_expr = function(node)
-    do
-        local case = node[1]
-        if case == "id" then
-            emit_id(node)
-        elseif case == "binop" then
-            emit_binop(node)
-        elseif case == "unop" then
-            emit_unop(node)
-        elseif case == "paren" then
-            emit_paren(node)
-        elseif case == "value" then
-            emit_value(node)
-        elseif case == "table" then
-            emit_table(node)
-        elseif case == "list" then
-            emit_list(node)
-        elseif case == "func" then
-            emit_func(node, true)
-        elseif case == "vararg" then
-            emit("...")
-        else
-            errorf("unknown node type: '%s'", node[1])
-        end
+    local case = node[1]
+    if case == "id" then
+        emit_id(node)
+    elseif case == "binop" then
+        emit_binop(node)
+    elseif case == "unop" then
+        emit_unop(node)
+    elseif case == "paren" then
+        emit_paren(node)
+    elseif case == "value" then
+        emit_value(node)
+    elseif case == "table" then
+        emit_table(node)
+    elseif case == "list" then
+        emit_list(node)
+    elseif case == "func" then
+        emit_func(node, true)
+    elseif case == "vararg" then
+        emit("...")
+    else
+        errorf("unknown node type: '%s'", node[1])
     end
 end
 local emit_stmt = nil
@@ -1628,8 +1608,6 @@ end
 local function emit_switch(node)
     local expr = node[4]
     if expr then
-        emit(space() .. "do\n")
-        v_level = v_level + 1
         emit(space() .. "local case = ")
         emit_expr(expr)
         emit("\n" .. space())
@@ -1668,8 +1646,6 @@ local function emit_switch(node)
         else
             v_res[#v_res] = ""
         end
-        emit(space() .. "end\n")
-        v_level = v_level - 1
         emit(space() .. "end\n")
     else
         emit(space())
@@ -1812,50 +1788,48 @@ local function emit_nop(node)
     v_res[#v_res] = ";\n"
 end
 emit_stmt = function(node, skip_break)
-    do
-        local case = node[1]
-        if case == "call" then
-            emit_call(node)
-        elseif case == "set" then
-            emit_set(node)
-        elseif case == "inc" then
-            emit_inc(node)
-        elseif case == "dec" then
-            emit_dec(node)
-        elseif case == "let" then
-            emit_let(node)
-        elseif case == "if" then
-            emit_if(node)
-        elseif case == "switch" then
-            emit_switch(node)
-        elseif case == "block" then
-            emit(space() .. "do\n")
-            emit_block(node)
-            emit(space() .. "end\n")
-        elseif case == "for" then
-            emit_for(node)
-        elseif case == "for_to" then
-            emit_for_to(node)
-        elseif case == "for_in" then
-            emit_for_in(node)
-        elseif case == "return" then
-            emit_return(node)
-        elseif case == "break" then
-            if not skip_break then
-                emit_break(node)
-            end
-        elseif case == "continue" then
-            emit_continue(node)
-        elseif case == "label" then
-            emit_label(node)
-        elseif case == "func" then
-            emit_func(node)
-        elseif case == "nop" then
-            emit_nop(node)
-        elseif case == "const" then
-        else
-            errorf("unknown node type: %s", node[1])
+    local case = node[1]
+    if case == "call" then
+        emit_call(node)
+    elseif case == "set" then
+        emit_set(node)
+    elseif case == "inc" then
+        emit_inc(node)
+    elseif case == "dec" then
+        emit_dec(node)
+    elseif case == "let" then
+        emit_let(node)
+    elseif case == "if" then
+        emit_if(node)
+    elseif case == "switch" then
+        emit_switch(node)
+    elseif case == "block" then
+        emit(space() .. "do\n")
+        emit_block(node)
+        emit(space() .. "end\n")
+    elseif case == "for" then
+        emit_for(node)
+    elseif case == "for_to" then
+        emit_for_to(node)
+    elseif case == "for_in" then
+        emit_for_in(node)
+    elseif case == "return" then
+        emit_return(node)
+    elseif case == "break" then
+        if not skip_break then
+            emit_break(node)
         end
+    elseif case == "continue" then
+        emit_continue(node)
+    elseif case == "label" then
+        emit_label(node)
+    elseif case == "func" then
+        emit_func(node)
+    elseif case == "nop" then
+        emit_nop(node)
+    elseif case == "const" then
+    else
+        errorf("unknown node type: %s", node[1])
     end
 end
 local function emit_module(node, level)

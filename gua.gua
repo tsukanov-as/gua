@@ -1663,8 +1663,6 @@ func emit_if(node) {
 func emit_switch(node) {
     expr := node[4]
     if expr {
-        emit(space() .. "do\n")
-        v_level += 1
         emit(space() .. "local case = ")
         emit_expr(expr)
         emit("\n" .. space())
@@ -1703,8 +1701,6 @@ func emit_switch(node) {
         } else {
             v_res[#v_res] = ""
         }
-        emit(space() .. "end\n")
-        v_level -= 1
         emit(space() .. "end\n")
     } else {
         emit(space())

@@ -15,7 +15,7 @@ local function test(name)
         return function(want)
             local res = gua.emit_module(m, 1)
             if res ~= want then
-                error("failed: " .. name .. "\nres:\n" .. res .. "\nast:\n" .. tostring(m))
+                error("failed: " .. name .. "\nres:\n" .. res .. "\nast:\n" .. tostring(m), 2)
             end
         end
     end
@@ -833,15 +833,13 @@ test "switch_01"
 [[
     local x = 1
     local y = 1
-    do
-        local case = x
-        if (case == (1 + 0) or case == 2) and (y > 0) then
-            print(1)
-        elseif case == 3 or case == 4 then
-            print(2)
-        else
-            print(3)
-        end
+    local case = x
+    if (case == (1 + 0) or case == 2) and (y > 0) then
+        print(1)
+    elseif case == 3 or case == 4 then
+        print(2)
+    else
+        print(3)
     end
 ]]
 
