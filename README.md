@@ -17,7 +17,7 @@ ColorMeta := {
 Point := {
     x: 0,
     y: 0,
-    c: setmt([0, 0, 0], ColorMeta),
+    c: nil,
 }
 
 func (p Point) move(dx, dy) {
@@ -32,7 +32,7 @@ PointMeta := {
     }
 }
 
-p := setmt({}, PointMeta)
+p := setmt({c: setmt([0, 0, 0], ColorMeta)}, PointMeta)
 p.c[1] = 255
 
 for p.x < 20 {
@@ -53,7 +53,7 @@ local ColorMeta = {
 local Point = {
     x = 0;
     y = 0;
-    c = setmt({0, 0, 0}, ColorMeta);
+    c = nil;
 }
 function Point:move(dx, dy)
     local p = self
@@ -66,7 +66,9 @@ local PointMeta = {
         return std.string.format("x: %d, y: %d, c: %s", self.x, self.y, std.tostring(self.c))
     end;
 }
-local p = setmt({}, PointMeta)
+local p = setmt({
+    c = setmt({0, 0, 0}, ColorMeta);
+}, PointMeta)
 p.c[1] = 255
 while p.x < 20 do
     p:move(1, 0)
