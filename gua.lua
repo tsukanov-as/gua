@@ -197,6 +197,8 @@ local p_level = 0
 local p_left = false
 local p_continue = List({})
 local p_looplevel = 0
+local p_tt = {}
+local p_ti = 0
 local function errorf(notef, ...)
     if p_path then
         error(p_path .. ":" .. p_line .. ": " .. string_format(notef, ...), 2)
@@ -205,250 +207,13 @@ local function errorf(notef, ...)
     end
 end
 local function scan()
-    local byte = string_byte
-    local src = p_src
-    local pos = p_curpos
-    local chr = p_chr
-    local tok = nil
-    repeat
-        tok = MAP[chr]
-        p_lit = ""
-        p_val = nil
-        p_endpos = pos
-        while tok == 3 do
-            if chr == 0x0A then
-                p_line = p_line + 1
-            end
-            pos = pos + 1;
-            chr = byte(src, pos)
-            tok = MAP[chr]
-        end
-        p_tokpos = pos
-        local case = tok
-        if case == 1 then
-            local AD = ALPHA_OR_DIGIT
-            local beg = pos
-            repeat
-                pos = pos + 1;
-                chr = byte(src, pos);
-            until not AD[chr]
-            p_lit = string_sub(src, beg, pos - 1)
-            tok = KEYWORDS[p_lit] or "id"
-            if tok == "true" then
-                p_val = true
-            elseif tok == "false" then
-                p_val = false
-            end
-        elseif case == 2 then
-            local beg = pos
-            local base = 10
-            if chr == 0x30 then
-                pos = pos + 1;
-                chr = byte(src, pos)
-                local case = chr
-                if case == 0x58 or case == 0x78 then
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                    beg = pos
-                    if not HEX[chr] then
-                        errorf("expected hex digit, found '%c'", chr)
-                    end
-                    repeat
-                        pos = pos + 1;
-                        chr = byte(src, pos)
-                    until not HEX[chr]
-                    base = 16
-                    if pos - beg > 8 then
-                        errorf("integer greater than 32 bits", tok)
-                    end
-                elseif case == 0x42 or case == 0x62 then
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                    beg = pos
-                    if chr ~= 0x30 and chr ~= 0x31 then
-                        errorf("expected bin digit, found '%c'", chr)
-                    end
-                    repeat
-                        pos = pos + 1;
-                        chr = byte(src, pos)
-                    until chr ~= 0x30 and chr ~= 0x31
-                    base = 2
-                    if pos - beg > 32 then
-                        errorf("integer greater than 32 bits", tok)
-                    end
-                end
-            end
-            if base == 10 then
-                while MAP[chr] == 2 do
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-                if chr == 0x2E then
-                    repeat
-                        pos = pos + 1;
-                        chr = byte(src, pos)
-                    until MAP[chr] ~= 2
-                end
-                if chr == 0x45 or chr == 0x65 then
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                    if chr == 0x2B or chr == 0x2D then
-                        pos = pos + 1;
-                        chr = byte(src, pos)
-                    end
-                    if MAP[chr] ~= 2 then
-                        errorf("expected digit, found '%s'", tok)
-                    end
-                    repeat
-                        pos = pos + 1;
-                        chr = byte(src, pos)
-                    until MAP[chr] ~= 2
-                end
-            end
-            tok = "num"
-            p_lit = string_sub(src, beg, pos - 1)
-            if base == 10 then
-                p_val = tonumber(p_lit)
-            else
-                p_val = Hex({tonumber(p_lit, base)})
-            end
-            if p_val == nil then
-                errorf("malformed number '%s'", p_lit)
-            end
-        elseif case == "str" then
-            local beg = pos
-            repeat
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x5C then
-                    pos = pos + 2;
-                    chr = byte(src, pos)
-                end
-            until chr == 0x22 or chr == 0x0A or chr == nil
-            if chr ~= 0x22 then
-                errorf("expected \", found EOL")
-            end
-            p_lit = string_sub(src, beg + 1, pos - 1)
-            p_val = p_lit
-            pos = pos + 1;
-            chr = byte(src, pos)
-        elseif case == "raw" then
-            local beg = pos
-            repeat
-                pos = pos + 1;
-                chr = byte(src, pos)
-                if chr == 0x0A then
-                    p_line = p_line + 1
-                end
-            until chr == 0x60 or chr == nil
-            if chr ~= 0x60 then
-                errorf("expected `, found '%c'", chr)
-            end
-            p_lit = string_sub(src, beg + 1, pos - 1)
-            p_val = Raw({p_lit})
-            pos = pos + 1;
-            chr = byte(src, pos)
-        elseif case == "chr" then
-            local beg = pos
-            pos = pos + 1;
-            chr = byte(src, pos)
-            if chr == 0x5C then
-                beg = pos
-                pos = pos + 1;
-                chr = byte(src, pos)
-            end
-            pos = pos + 1;
-            chr = byte(src, pos)
-            if chr ~= 0x27 then
-                errorf("expected ', found '%c'", chr)
-            end
-            p_lit = string_sub(src, beg + 1, pos - 1)
-            p_val = Hex({string_byte(p_lit)})
-            pos = pos + 1;
-            chr = byte(src, pos)
-        elseif (case == nil) and (chr ~= nil) then
-            errorf("unknown symbol '%c'", chr)
-        else
-            local old = chr
-            pos = pos + 1;
-            chr = byte(src, pos)
-            local case = chr
-            if case == 0x3D then
-                local case = old
-                if case == 0x3A then
-                    tok = ":=";
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                elseif case == 0x3D then
-                    tok = "==";
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                elseif case == 0x2B then
-                    tok = "+=";
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                elseif case == 0x2D then
-                    tok = "-=";
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                elseif case == 0x3C then
-                    tok = "<=";
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                elseif case == 0x3E then
-                    tok = ">=";
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                elseif case == 0x21 then
-                    tok = "!=";
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == 0x3A then
-                if old == 0x3A then
-                    tok = "::"
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == 0x2F then
-                if old == 0x2F then
-                    local beg = pos
-                    repeat
-                        pos = pos + 1;
-                        chr = byte(src, pos)
-                    until chr == 0x0A or chr == nil
-                    p_lit = string_sub(src, beg + 1, pos - 1)
-                    p_comments[p_line] = p_lit
-                    tok = "//"
-                end
-            elseif case == 0x26 then
-                if old == 0x26 then
-                    tok = "&&"
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == 0x7C then
-                if old == 0x7C then
-                    tok = "||"
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                end
-            elseif case == 0x2E then
-                if old == 0x2E then
-                    tok = ".."
-                    pos = pos + 1;
-                    chr = byte(src, pos)
-                    if chr == 0x2E then
-                        tok = "..."
-                        pos = pos + 1;
-                        chr = byte(src, pos)
-                    end
-                end
-            end
-        end
-    until tok ~= "//"
-    p_curpos, p_chr, p_tok = pos, chr, tok
-    return p_tok
+    p_ti = p_ti + 1
+    local x = p_tt[p_ti]
+    if x then
+        p_line, p_tokpos, p_endpos, p_tok, p_lit, p_val = x[1], x[2], x[3], x[4], x[5], x[6]
+    else
+        p_tok, p_lit, p_val = nil, nil, nil
+    end
 end
 local function expect(t, l)
     if p_tok ~= t then
@@ -467,7 +232,7 @@ local function expect(t, l)
 end
 local function skip(t)
     expect(t, 3)
-    return scan()
+    scan()
 end
 local function open_scope(vars)
     p_vars = vars or {}
@@ -1280,6 +1045,253 @@ parse_block = function(vars, loop)
     end
     return Node({"block", pos, p_endpos - pos, body})
 end
+local function tokenize(src)
+    local byte = string.byte
+    local t = {}
+    local comments = {}
+    local line = 1
+    local pos = 1
+    local chr = byte(src, 1)
+    while chr do
+        local tok = MAP[chr]
+        local lit, val
+        local endpos = pos
+        while tok == 3 do
+            if chr == 0x0A then
+                line = line + 1
+            end
+            pos = pos + 1;
+            chr = byte(src, pos)
+            tok = MAP[chr]
+        end
+        local tokpos = pos
+        local case = tok
+        if case == 1 then
+            local beg = pos
+            repeat
+                pos = pos + 1;
+                chr = byte(src, pos);
+            until not ALPHA_OR_DIGIT[chr]
+            lit = string_sub(src, beg, pos - 1)
+            tok = KEYWORDS[lit] or "id"
+            if tok == "true" then
+                val = true
+            elseif tok == "false" then
+                val = false
+            end
+        elseif case == 2 then
+            local beg = pos
+            local base = 10
+            if chr == 0x30 then
+                pos = pos + 1;
+                chr = byte(src, pos)
+                local case = chr
+                if case == 0x58 or case == 0x78 then
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                    beg = pos
+                    if not HEX[chr] then
+                        errorf("expected hex digit, found '%c'", chr)
+                    end
+                    repeat
+                        pos = pos + 1;
+                        chr = byte(src, pos)
+                    until not HEX[chr]
+                    base = 16
+                    if pos - beg > 8 then
+                        errorf("integer greater than 32 bits", tok)
+                    end
+                elseif case == 0x42 or case == 0x62 then
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                    beg = pos
+                    if chr ~= 0x30 and chr ~= 0x31 then
+                        errorf("expected bin digit, found '%c'", chr)
+                    end
+                    repeat
+                        pos = pos + 1;
+                        chr = byte(src, pos)
+                    until chr ~= 0x30 and chr ~= 0x31
+                    base = 2
+                    if pos - beg > 32 then
+                        errorf("integer greater than 32 bits", tok)
+                    end
+                end
+            end
+            if base == 10 then
+                while MAP[chr] == 2 do
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                end
+                if chr == 0x2E then
+                    repeat
+                        pos = pos + 1;
+                        chr = byte(src, pos)
+                    until MAP[chr] ~= 2
+                end
+                if chr == 0x45 or chr == 0x65 then
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                    if chr == 0x2B or chr == 0x2D then
+                        pos = pos + 1;
+                        chr = byte(src, pos)
+                    end
+                    if MAP[chr] ~= 2 then
+                        errorf("expected digit, found '%s'", tok)
+                    end
+                    repeat
+                        pos = pos + 1;
+                        chr = byte(src, pos)
+                    until MAP[chr] ~= 2
+                end
+            end
+            tok = "num"
+            lit = string_sub(src, beg, pos - 1)
+            if base == 10 then
+                val = tonumber(lit)
+            else
+                val = Hex({tonumber(lit, base)})
+            end
+            if val == nil then
+                errorf("malformed number '%s'", lit)
+            end
+        elseif case == "str" then
+            local beg = pos
+            repeat
+                pos = pos + 1;
+                chr = byte(src, pos)
+                if chr == 0x5C then
+                    pos = pos + 2;
+                    chr = byte(src, pos)
+                end
+            until chr == 0x22 or chr == 0x0A or chr == nil
+            if chr ~= 0x22 then
+                errorf("expected \", found EOL")
+            end
+            lit = string_sub(src, beg + 1, pos - 1)
+            val = lit
+            pos = pos + 1;
+            chr = byte(src, pos)
+        elseif case == "raw" then
+            local beg = pos
+            repeat
+                pos = pos + 1;
+                chr = byte(src, pos)
+                if chr == 0x0A then
+                    line = line + 1
+                end
+            until chr == 0x60 or chr == nil
+            if chr ~= 0x60 then
+                errorf("expected `, found '%c'", chr)
+            end
+            lit = string_sub(src, beg + 1, pos - 1)
+            val = Raw({lit})
+            pos = pos + 1;
+            chr = byte(src, pos)
+        elseif case == "chr" then
+            local beg = pos
+            pos = pos + 1;
+            chr = byte(src, pos)
+            if chr == 0x5C then
+                beg = pos
+                pos = pos + 1;
+                chr = byte(src, pos)
+            end
+            pos = pos + 1;
+            chr = byte(src, pos)
+            if chr ~= 0x27 then
+                errorf("expected ', found '%c'", chr)
+            end
+            lit = string_sub(src, beg + 1, pos - 1)
+            val = Hex({string_byte(lit)})
+            pos = pos + 1;
+            chr = byte(src, pos)
+        elseif (case == nil) and (chr ~= nil) then
+            errorf("unknown symbol '%c'", chr)
+        else
+            local old = chr
+            pos = pos + 1;
+            chr = byte(src, pos)
+            local case = chr
+            if case == 0x3D then
+                local case = old
+                if case == 0x3A then
+                    tok = ":=";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x3D then
+                    tok = "==";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x2B then
+                    tok = "+=";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x2D then
+                    tok = "-=";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x3C then
+                    tok = "<=";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x3E then
+                    tok = ">=";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                elseif case == 0x21 then
+                    tok = "!=";
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                end
+            elseif case == 0x3A then
+                if old == 0x3A then
+                    tok = "::"
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                end
+            elseif case == 0x2F then
+                if old == 0x2F then
+                    local beg = pos
+                    repeat
+                        pos = pos + 1;
+                        chr = byte(src, pos)
+                    until chr == 0x0A or chr == nil
+                    lit = string_sub(src, beg + 1, pos - 1)
+                    comments[line] = lit
+                    tok = "//"
+                end
+            elseif case == 0x26 then
+                if old == 0x26 then
+                    tok = "&&"
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                end
+            elseif case == 0x7C then
+                if old == 0x7C then
+                    tok = "||"
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                end
+            elseif case == 0x2E then
+                if old == 0x2E then
+                    tok = ".."
+                    pos = pos + 1;
+                    chr = byte(src, pos)
+                    if chr == 0x2E then
+                        tok = "..."
+                        pos = pos + 1;
+                        chr = byte(src, pos)
+                    end
+                end
+            end
+        end
+        if tok ~= "//" then
+            t[#t+1] = {line, tokpos, endpos, tok, lit, val}
+        end
+    end
+    return t, comments
+end
 local function parse_module(src, path, vars)
     p_path = path
     p_src = src
@@ -1301,6 +1313,8 @@ local function parse_module(src, path, vars)
     p_looplevel = 0
     p_curpos = p_curpos + 1;
     p_chr = string_byte(p_src, p_curpos)
+    p_ti = 0
+    p_tt = tokenize(src)
     scan()
     local pos = p_tokpos
     local body = parse_body(vars)
