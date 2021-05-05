@@ -743,11 +743,623 @@ local function parse_and()
 end
 parse_expr = function()
     local pos = p_tokpos
-    local left = parse_and()
+    local left do --parse_and()
+        local _pos = p_tokpos
+        local _left do --parse_rel()
+            local __pos = p_tokpos
+            local __left do --parse_cat()
+                local ___pos = p_tokpos
+                local ___left do --parse_add()
+                    local ____pos = p_tokpos
+                    local ____left do --parse_mul()
+                        local _____pos = p_tokpos
+                        local _____left = parse_unary()
+                        while MUL_OPS[p_tok] do
+                            local _____op = p_tok
+                            scan()
+                            local _____right = parse_unary()
+                            _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                        end
+                        ____left = _____left
+                    end
+                    while ADD_OPS[p_tok] do
+                        local ____op = p_tok
+                        scan()
+                        local ____right do --parse_mul()
+                            local _____pos = p_tokpos
+                            local _____left = parse_unary()
+                            while MUL_OPS[p_tok] do
+                                local _____op = p_tok
+                                scan()
+                                local _____right = parse_unary()
+                                _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                            end
+                            ____right = _____left
+                        end
+                        ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                    end
+                    ___left = ____left
+                end --parse_add()
+                while p_tok == ".." do
+                    scan()
+                    local ___right do --parse_add()
+                        local ____pos = p_tokpos
+                        local ____left do --parse_mul()
+                            local _____pos = p_tokpos
+                            local _____left = parse_unary()
+                            while MUL_OPS[p_tok] do
+                                local _____op = p_tok
+                                scan()
+                                local _____right = parse_unary()
+                                _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                            end
+                            ____left = _____left
+                        end
+                        while ADD_OPS[p_tok] do
+                            local ____op = p_tok
+                            scan()
+                            local ____right do --parse_mul()
+                                local _____pos = p_tokpos
+                                local _____left = parse_unary()
+                                while MUL_OPS[p_tok] do
+                                    local _____op = p_tok
+                                    scan()
+                                    local _____right = parse_unary()
+                                    _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                end
+                                ____right = _____left
+                            end
+                            ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                        end
+                        ___right = ____left
+                    end --parse_add()
+                    ___left = Node({"binop", ___pos, p_endpos - ___pos, ___left, "..", ___right})
+                end
+                __left = ___left
+            end --parse_cat()
+            while REL_OPS[p_tok] do
+                local __op = p_tok
+                scan()
+                local __right do --parse_cat()
+                    local ___pos = p_tokpos
+                    local ___left do --parse_add()
+                        local ____pos = p_tokpos
+                        local ____left do --parse_mul()
+                            local _____pos = p_tokpos
+                            local _____left = parse_unary()
+                            while MUL_OPS[p_tok] do
+                                local _____op = p_tok
+                                scan()
+                                local _____right = parse_unary()
+                                _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                            end
+                            ____left = _____left
+                        end
+                        while ADD_OPS[p_tok] do
+                            local ____op = p_tok
+                            scan()
+                            local ____right do --parse_mul()
+                                local _____pos = p_tokpos
+                                local _____left = parse_unary()
+                                while MUL_OPS[p_tok] do
+                                    local _____op = p_tok
+                                    scan()
+                                    local _____right = parse_unary()
+                                    _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                end
+                                ____right = _____left
+                            end
+                            ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                        end
+                        ___left = ____left
+                    end --parse_add()
+                    while p_tok == ".." do
+                        scan()
+                        local ___right do --parse_add()
+                            local ____pos = p_tokpos
+                            local ____left do --parse_mul()
+                                local _____pos = p_tokpos
+                                local _____left = parse_unary()
+                                while MUL_OPS[p_tok] do
+                                    local _____op = p_tok
+                                    scan()
+                                    local _____right = parse_unary()
+                                    _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                end
+                                ____left = _____left
+                            end
+                            while ADD_OPS[p_tok] do
+                                local ____op = p_tok
+                                scan()
+                                local ____right do --parse_mul()
+                                    local _____pos = p_tokpos
+                                    local _____left = parse_unary()
+                                    while MUL_OPS[p_tok] do
+                                        local _____op = p_tok
+                                        scan()
+                                        local _____right = parse_unary()
+                                        _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                    end
+                                    ____right = _____left
+                                end
+                                ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                            end
+                            ___right = ____left
+                        end --parse_add()
+                        ___left = Node({"binop", ___pos, p_endpos - ___pos, ___left, "..", ___right})
+                    end
+                    __right = ___left
+                end --parse_cat()
+                __left = Node({"binop", __pos, p_endpos - __pos, __left, __op, __right})
+            end
+            _left = __left
+        end --parse_rel()
+        while p_tok == "&&" do
+            local _op = p_tok
+            scan()
+            local _right do --parse_rel()
+                local __pos = p_tokpos
+                local __left do --parse_cat()
+                    local ___pos = p_tokpos
+                    local ___left do --parse_add()
+                        local ____pos = p_tokpos
+                        local ____left do --parse_mul()
+                            local _____pos = p_tokpos
+                            local _____left = parse_unary()
+                            while MUL_OPS[p_tok] do
+                                local _____op = p_tok
+                                scan()
+                                local _____right = parse_unary()
+                                _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                            end
+                            ____left = _____left
+                        end
+                        while ADD_OPS[p_tok] do
+                            local ____op = p_tok
+                            scan()
+                            local ____right do --parse_mul()
+                                local _____pos = p_tokpos
+                                local _____left = parse_unary()
+                                while MUL_OPS[p_tok] do
+                                    local _____op = p_tok
+                                    scan()
+                                    local _____right = parse_unary()
+                                    _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                end
+                                ____right = _____left
+                            end
+                            ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                        end
+                        ___left = ____left
+                    end --parse_add()
+                    while p_tok == ".." do
+                        scan()
+                        local ___right do --parse_add()
+                            local ____pos = p_tokpos
+                            local ____left do --parse_mul()
+                                local _____pos = p_tokpos
+                                local _____left = parse_unary()
+                                while MUL_OPS[p_tok] do
+                                    local _____op = p_tok
+                                    scan()
+                                    local _____right = parse_unary()
+                                    _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                end
+                                ____left = _____left
+                            end
+                            while ADD_OPS[p_tok] do
+                                local ____op = p_tok
+                                scan()
+                                local ____right do --parse_mul()
+                                    local _____pos = p_tokpos
+                                    local _____left = parse_unary()
+                                    while MUL_OPS[p_tok] do
+                                        local _____op = p_tok
+                                        scan()
+                                        local _____right = parse_unary()
+                                        _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                    end
+                                    ____right = _____left
+                                end
+                                ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                            end
+                            ___right = ____left
+                        end --parse_add()
+                        ___left = Node({"binop", ___pos, p_endpos - ___pos, ___left, "..", ___right})
+                    end
+                    __left = ___left
+                end --parse_cat()
+                while REL_OPS[p_tok] do
+                    local __op = p_tok
+                    scan()
+                    local __right do --parse_cat()
+                        local ___pos = p_tokpos
+                        local ___left do --parse_add()
+                            local ____pos = p_tokpos
+                            local ____left do --parse_mul()
+                                local _____pos = p_tokpos
+                                local _____left = parse_unary()
+                                while MUL_OPS[p_tok] do
+                                    local _____op = p_tok
+                                    scan()
+                                    local _____right = parse_unary()
+                                    _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                end
+                                ____left = _____left
+                            end
+                            while ADD_OPS[p_tok] do
+                                local ____op = p_tok
+                                scan()
+                                local ____right do --parse_mul()
+                                    local _____pos = p_tokpos
+                                    local _____left = parse_unary()
+                                    while MUL_OPS[p_tok] do
+                                        local _____op = p_tok
+                                        scan()
+                                        local _____right = parse_unary()
+                                        _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                    end
+                                    ____right = _____left
+                                end
+                                ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                            end
+                            ___left = ____left
+                        end --parse_add()
+                        while p_tok == ".." do
+                            scan()
+                            local ___right do --parse_add()
+                                local ____pos = p_tokpos
+                                local ____left do --parse_mul()
+                                    local _____pos = p_tokpos
+                                    local _____left = parse_unary()
+                                    while MUL_OPS[p_tok] do
+                                        local _____op = p_tok
+                                        scan()
+                                        local _____right = parse_unary()
+                                        _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                    end
+                                    ____left = _____left
+                                end
+                                while ADD_OPS[p_tok] do
+                                    local ____op = p_tok
+                                    scan()
+                                    local ____right do --parse_mul()
+                                        local _____pos = p_tokpos
+                                        local _____left = parse_unary()
+                                        while MUL_OPS[p_tok] do
+                                            local _____op = p_tok
+                                            scan()
+                                            local _____right = parse_unary()
+                                            _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                        end
+                                        ____right = _____left
+                                    end
+                                    ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                                end
+                                ___right = ____left
+                            end --parse_add()
+                            ___left = Node({"binop", ___pos, p_endpos - ___pos, ___left, "..", ___right})
+                        end
+                        __right = ___left
+                    end --parse_cat()
+                    __left = Node({"binop", __pos, p_endpos - __pos, __left, __op, __right})
+                end
+                _right = __left
+            end --parse_rel()
+            _left = Node({"binop", _pos, p_endpos - _pos, _left, _op, _right})
+        end
+        left = _left
+    end --parse_and()
     while p_tok == "||" do
         local op = p_tok
         scan()
-        local right = parse_and()
+        local right do --parse_and()
+            local _pos = p_tokpos
+            local _left do --parse_rel()
+                local __pos = p_tokpos
+                local __left do --parse_cat()
+                    local ___pos = p_tokpos
+                    local ___left do --parse_add()
+                        local ____pos = p_tokpos
+                        local ____left do --parse_mul()
+                            local _____pos = p_tokpos
+                            local _____left = parse_unary()
+                            while MUL_OPS[p_tok] do
+                                local _____op = p_tok
+                                scan()
+                                local _____right = parse_unary()
+                                _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                            end
+                            ____left = _____left
+                        end
+                        while ADD_OPS[p_tok] do
+                            local ____op = p_tok
+                            scan()
+                            local ____right do --parse_mul()
+                                local _____pos = p_tokpos
+                                local _____left = parse_unary()
+                                while MUL_OPS[p_tok] do
+                                    local _____op = p_tok
+                                    scan()
+                                    local _____right = parse_unary()
+                                    _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                end
+                                ____right = _____left
+                            end
+                            ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                        end
+                        ___left = ____left
+                    end --parse_add()
+                    while p_tok == ".." do
+                        scan()
+                        local ___right do --parse_add()
+                            local ____pos = p_tokpos
+                            local ____left do --parse_mul()
+                                local _____pos = p_tokpos
+                                local _____left = parse_unary()
+                                while MUL_OPS[p_tok] do
+                                    local _____op = p_tok
+                                    scan()
+                                    local _____right = parse_unary()
+                                    _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                end
+                                ____left = _____left
+                            end
+                            while ADD_OPS[p_tok] do
+                                local ____op = p_tok
+                                scan()
+                                local ____right do --parse_mul()
+                                    local _____pos = p_tokpos
+                                    local _____left = parse_unary()
+                                    while MUL_OPS[p_tok] do
+                                        local _____op = p_tok
+                                        scan()
+                                        local _____right = parse_unary()
+                                        _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                    end
+                                    ____right = _____left
+                                end
+                                ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                            end
+                            ___right = ____left
+                        end --parse_add()
+                        ___left = Node({"binop", ___pos, p_endpos - ___pos, ___left, "..", ___right})
+                    end
+                    __left = ___left
+                end --parse_cat()
+                while REL_OPS[p_tok] do
+                    local __op = p_tok
+                    scan()
+                    local __right do --parse_cat()
+                        local ___pos = p_tokpos
+                        local ___left do --parse_add()
+                            local ____pos = p_tokpos
+                            local ____left do --parse_mul()
+                                local _____pos = p_tokpos
+                                local _____left = parse_unary()
+                                while MUL_OPS[p_tok] do
+                                    local _____op = p_tok
+                                    scan()
+                                    local _____right = parse_unary()
+                                    _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                end
+                                ____left = _____left
+                            end
+                            while ADD_OPS[p_tok] do
+                                local ____op = p_tok
+                                scan()
+                                local ____right do --parse_mul()
+                                    local _____pos = p_tokpos
+                                    local _____left = parse_unary()
+                                    while MUL_OPS[p_tok] do
+                                        local _____op = p_tok
+                                        scan()
+                                        local _____right = parse_unary()
+                                        _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                    end
+                                    ____right = _____left
+                                end
+                                ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                            end
+                            ___left = ____left
+                        end --parse_add()
+                        while p_tok == ".." do
+                            scan()
+                            local ___right do --parse_add()
+                                local ____pos = p_tokpos
+                                local ____left do --parse_mul()
+                                    local _____pos = p_tokpos
+                                    local _____left = parse_unary()
+                                    while MUL_OPS[p_tok] do
+                                        local _____op = p_tok
+                                        scan()
+                                        local _____right = parse_unary()
+                                        _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                    end
+                                    ____left = _____left
+                                end
+                                while ADD_OPS[p_tok] do
+                                    local ____op = p_tok
+                                    scan()
+                                    local ____right do --parse_mul()
+                                        local _____pos = p_tokpos
+                                        local _____left = parse_unary()
+                                        while MUL_OPS[p_tok] do
+                                            local _____op = p_tok
+                                            scan()
+                                            local _____right = parse_unary()
+                                            _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                        end
+                                        ____right = _____left
+                                    end
+                                    ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                                end
+                                ___right = ____left
+                            end --parse_add()
+                            ___left = Node({"binop", ___pos, p_endpos - ___pos, ___left, "..", ___right})
+                        end
+                        __right = ___left
+                    end --parse_cat()
+                    __left = Node({"binop", __pos, p_endpos - __pos, __left, __op, __right})
+                end
+                _left = __left
+            end --parse_rel()
+            while p_tok == "&&" do
+                local _op = p_tok
+                scan()
+                local _right do --parse_rel()
+                    local __pos = p_tokpos
+                    local __left do --parse_cat()
+                        local ___pos = p_tokpos
+                        local ___left do --parse_add()
+                            local ____pos = p_tokpos
+                            local ____left do --parse_mul()
+                                local _____pos = p_tokpos
+                                local _____left = parse_unary()
+                                while MUL_OPS[p_tok] do
+                                    local _____op = p_tok
+                                    scan()
+                                    local _____right = parse_unary()
+                                    _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                end
+                                ____left = _____left
+                            end
+                            while ADD_OPS[p_tok] do
+                                local ____op = p_tok
+                                scan()
+                                local ____right do --parse_mul()
+                                    local _____pos = p_tokpos
+                                    local _____left = parse_unary()
+                                    while MUL_OPS[p_tok] do
+                                        local _____op = p_tok
+                                        scan()
+                                        local _____right = parse_unary()
+                                        _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                    end
+                                    ____right = _____left
+                                end
+                                ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                            end
+                            ___left = ____left
+                        end --parse_add()
+                        while p_tok == ".." do
+                            scan()
+                            local ___right do --parse_add()
+                                local ____pos = p_tokpos
+                                local ____left do --parse_mul()
+                                    local _____pos = p_tokpos
+                                    local _____left = parse_unary()
+                                    while MUL_OPS[p_tok] do
+                                        local _____op = p_tok
+                                        scan()
+                                        local _____right = parse_unary()
+                                        _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                    end
+                                    ____left = _____left
+                                end
+                                while ADD_OPS[p_tok] do
+                                    local ____op = p_tok
+                                    scan()
+                                    local ____right do --parse_mul()
+                                        local _____pos = p_tokpos
+                                        local _____left = parse_unary()
+                                        while MUL_OPS[p_tok] do
+                                            local _____op = p_tok
+                                            scan()
+                                            local _____right = parse_unary()
+                                            _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                        end
+                                        ____right = _____left
+                                    end
+                                    ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                                end
+                                ___right = ____left
+                            end --parse_add()
+                            ___left = Node({"binop", ___pos, p_endpos - ___pos, ___left, "..", ___right})
+                        end
+                        __left = ___left
+                    end --parse_cat()
+                    while REL_OPS[p_tok] do
+                        local __op = p_tok
+                        scan()
+                        local __right do --parse_cat()
+                            local ___pos = p_tokpos
+                            local ___left do --parse_add()
+                                local ____pos = p_tokpos
+                                local ____left do --parse_mul()
+                                    local _____pos = p_tokpos
+                                    local _____left = parse_unary()
+                                    while MUL_OPS[p_tok] do
+                                        local _____op = p_tok
+                                        scan()
+                                        local _____right = parse_unary()
+                                        _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                    end
+                                    ____left = _____left
+                                end
+                                while ADD_OPS[p_tok] do
+                                    local ____op = p_tok
+                                    scan()
+                                    local ____right do --parse_mul()
+                                        local _____pos = p_tokpos
+                                        local _____left = parse_unary()
+                                        while MUL_OPS[p_tok] do
+                                            local _____op = p_tok
+                                            scan()
+                                            local _____right = parse_unary()
+                                            _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                        end
+                                        ____right = _____left
+                                    end
+                                    ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                                end
+                                ___left = ____left
+                            end --parse_add()
+                            while p_tok == ".." do
+                                scan()
+                                local ___right do --parse_add()
+                                    local ____pos = p_tokpos
+                                    local ____left do --parse_mul()
+                                        local _____pos = p_tokpos
+                                        local _____left = parse_unary()
+                                        while MUL_OPS[p_tok] do
+                                            local _____op = p_tok
+                                            scan()
+                                            local _____right = parse_unary()
+                                            _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                        end
+                                        ____left = _____left
+                                    end
+                                    while ADD_OPS[p_tok] do
+                                        local ____op = p_tok
+                                        scan()
+                                        local ____right do --parse_mul()
+                                            local _____pos = p_tokpos
+                                            local _____left = parse_unary()
+                                            while MUL_OPS[p_tok] do
+                                                local _____op = p_tok
+                                                scan()
+                                                local _____right = parse_unary()
+                                                _____left = Node({"binop", _____pos, p_endpos - _____pos, _____left, _____op, _____right})
+                                            end
+                                            ____right = _____left
+                                        end
+                                        ____left = Node({"binop", ____pos, p_endpos - ____pos, ____left, ____op, ____right})
+                                    end
+                                    ___right = ____left
+                                end --parse_add()
+                                ___left = Node({"binop", ___pos, p_endpos - ___pos, ___left, "..", ___right})
+                            end
+                            __right = ___left
+                        end --parse_cat()
+                        __left = Node({"binop", __pos, p_endpos - __pos, __left, __op, __right})
+                    end
+                    _right = __left
+                end --parse_rel()
+                _left = Node({"binop", _pos, p_endpos - _pos, _left, _op, _right})
+            end
+            right = _left
+        end --parse_and()
         left = Node({"binop", pos, p_endpos - pos, left, op, right})
     end
     return left
