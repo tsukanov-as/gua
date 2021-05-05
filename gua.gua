@@ -63,7 +63,7 @@ Raw := Type({
                 && !string_find(s, "]" .. x .. "]", 1, true) {
                 break
             }
-            i = i + 1
+            i += 1
         }
         return string_format(" [%s[%s]%s]", x, s, x)
     },
@@ -646,8 +646,7 @@ parse_list = func() {
 parse_func := nil
 
 func parse_operand() {
-    node := p_left
-    if node {
+    if node := p_left; node {
         p_left = false
         return node
     }
@@ -656,29 +655,29 @@ func parse_operand() {
         pos, len, val := p_tokpos, #p_lit, p_val
         scan()
         tail := parse_tail()
-        node = Node(["value", pos, len, val, tail])
+        return Node(["value", pos, len, val, tail])
     case "id":
-        node = parse_id(true)
+        return parse_id(true)
     case "(":
-        node = parse_paren()
+        return parse_paren()
     case "{":
-        node = parse_table()
+        return parse_table()
     case "[":
-        node = parse_list()
+        return parse_list()
     case "func":
-        node = parse_func(true)
+        return parse_func(true)
     case "...":
-        node = Node(["vararg", p_tokpos, 3])
+        node := Node(["vararg", p_tokpos, 3])
         scan()
+        return node
     default:
         if LITERALS[p_tok] {
-            node = Node(["value", p_tokpos, #p_lit, p_val])
+            node := Node(["value", p_tokpos, #p_lit, p_val])
             scan()
-        } else {
-            errorf("expected operand, found '%s'", p_tok)
+            return node
         }
+        errorf("expected operand, found '%s'", p_tok)
     }
-    return node
 }
 
 func parse_pow() {
@@ -1105,7 +1104,7 @@ func parse_return() {
             scan()
         }
     }
-    if p_tok && p_tok != "case" {
+    if p_tok && p_tok != "case" && p_tok != "default" {
         expect("}")
     }
     return Node(["return", pos, p_endpos-pos, list])
@@ -1138,8 +1137,7 @@ func parse_const_item() {
     if RESERVED[name] {
         errorf("name '%s' is reserved", name)
     }
-    v := find_var(name)
-    if v {
+    if v := find_var(name); v {
         if v[7] {
             errorf("shadowing of constant is prohibited, you need to change the name '%s'", name)
         } else {
@@ -1147,7 +1145,6 @@ func parse_const_item() {
         }
     }
     id := Node(["id", p_tokpos, #name, name, false, false, nil])
-
     scan()
     skip("=")
     if !LITERALS[p_tok] {
@@ -1309,7 +1306,7 @@ parse_block = func(vars, loop) {
     if loop && p_continue[p_looplevel] {
         body[#body+1] = Node(["label", 0, 0, "continue"])
         p_continue[p_looplevel] = false
-        p_looplevel = p_looplevel - 1
+        p_looplevel -= 1
     }
     return Node(["block", pos, p_endpos-pos, body])
 }
@@ -1366,9 +1363,8 @@ func emit(s) {
 emit_expr := nil
 
 func emit_field(node) {
-    args := node[4]
     name := node[5]
-    if args {
+    if args := node[4]; args {
         if node[6] {
             emit(":" .. name)
         } else {
@@ -1424,13 +1420,12 @@ func emit_value(node) {
 }
 
 func emit_id(node) {
-    tail, args, _const := node[5], node[6], node[7]
-    if _const && _const[1] == "value" {
+    if _const := node[7]; _const && _const[1] == "value" {
         emit_value(_const)
         return
     }
     emit(node[4])
-    if args {
+    if args := node[6]; args {
         emit("(")
         if #args > 0 {
             for _, v in ipairs(args) {
@@ -1441,7 +1436,7 @@ func emit_id(node) {
         }
         emit(")")
     }
-    if tail {
+    if tail := node[5]; tail {
         for _, v in ipairs(tail) {
             if v[1] == "field" {
                 emit_field(v)
@@ -1454,7 +1449,8 @@ func emit_id(node) {
 
 func emit_pair(node) {
     key := node[4]
-    if key[1] == "id" && !key[5] && !key[6] {
+    switch key[1] {
+    case "id"; !key[5] && !key[6]:
         name := key[4]
         if KEYWORDS[name] || RESERVED[name] {
             emit("[\"")
@@ -1463,9 +1459,9 @@ func emit_pair(node) {
         } else {
             emit_expr(key)
         }
-    } else if key[1] == "index" {
+    case "index":
         emit_index(key)
-    } else {
+    default:
         emit("[")
         emit_expr(key)
         emit("]")
@@ -1497,8 +1493,7 @@ func emit_table(node) {
 
 func emit_list(node) {
     emit("{")
-    list := node[4]
-    if #list > 0 {
+    if list := node[4]; #list > 0 {
         for _, v in ipairs(list) {
             emit_expr(v)
             emit(", ")
@@ -1515,9 +1510,8 @@ func emit_paren(node) {
 }
 
 func emit_unop(node) {
-    op := LUA_OPS[node[4]]
-    if op != "+" {
-        emit(LUA_OPS[node[4]])
+    if op := LUA_OPS[node[4]]; op != "+" {
+        emit(op)
     }
     emit_expr(node[5])
 }
@@ -1624,8 +1618,8 @@ func emit_let(node) {
 }
 
 func emit_if(node) {
-    left, right := node[7], node[8]
-    if left {
+    if left := node[7]; left {
+        right := node[8]
         emit(space() .. "local ")
         for _, v in ipairs(left) {
             emit(v[4])
@@ -1661,8 +1655,7 @@ func emit_if(node) {
 }
 
 func emit_switch(node) {
-    expr := node[4]
-    if expr {
+    if expr := node[4]; expr {
         emit(space() .. "local case = ")
         emit_expr(expr)
         emit("\n" .. space())
@@ -1723,8 +1716,7 @@ func emit_switch(node) {
 }
 
 func emit_for(node) {
-    expr := node[4]
-    block := node[5]
+    expr, block := node[4], node[5]
     body := block[4]
     if !expr && #body > 0 {
         last := body[#body]
@@ -1758,8 +1750,7 @@ func emit_for_to(node) {
     emit_expr(node[5])
     emit(", ")
     emit_expr(node[6])
-    step := node[7]
-    if step {
+    if step := node[7]; step {
         emit(", ")
         emit_expr(step)
     }
@@ -1785,9 +1776,8 @@ func emit_for_in(node) {
 }
 
 func emit_return(node) {
-    list := node[4]
     emit(space() .. "return")
-    if list {
+    if list := node[4]; list {
         emit(" ")
         for _, v in ipairs(list) {
             emit_expr(v)
@@ -1799,8 +1789,7 @@ func emit_return(node) {
 }
 
 func emit_break(node) {
-    expr := node[4]
-    if expr {
+    if expr := node[4]; expr {
         emit(space() .. "if ")
         emit_expr(expr)
         emit(" then\n")
@@ -1912,22 +1901,25 @@ func emit_module(node, level) {
 }
 
 {
-    fn := _G.arg[1]
-    if fn {
-        os, io, pcall, print := _G.os, _G.io, _G.pcall, _G.print
+    if fn := _G.arg[1]; fn {
+        os, io, pcall, print, run := _G.os, _G.io, _G.pcall, _G.print, _G.loadstring
         src := io::open(fn, "r").read("*a")
         r, m := pcall(parse_module, src, fn)
         if r {
             res := emit_module(m, 0)
-            out := _G.arg[2]
-            if out {
-                io::open(out, "w").write(res)
-            } else {
-                f := io::open(fn .. ".lua", "w")
+            if out := _G.arg[2]; out {
+                f := io::open(out, "w")
                 f.write(res)
                 f.close()
+                print(os::clock())
+            } else {
+                f, err := run(res)
+                if err {
+                    print(err)
+                    os::exit(1)
+                }
+                f()
             }
-            print(os::clock())
         } else {
             print(m)
             os::exit(1)

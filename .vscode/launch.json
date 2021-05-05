@@ -27,6 +27,15 @@
                 "command": "luajit",
             },
             "args": ["-joff", "./gua.lua", "${file}", "${fileBasenameNoExtension}.lua"]
-        }
+        },
+        {
+            "name": "run (gua)",
+            "type": "lua-local",
+            "request": "launch",
+            "program": {
+                "command": "luajit"
+            },
+            "args": ["-joff", "./gua.lua", "${file}"]
+        },
     ]
 }

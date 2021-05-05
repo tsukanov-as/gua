@@ -3,7 +3,12 @@ go+lua=gua (experimental programming language)
 
 [![test](https://github.com/tsukanov-as/gua/actions/workflows/build.yml/badge.svg)](https://github.com/tsukanov-as/gua/actions/workflows/build.yml)
 
-transpiler from gua:
+## WAT
+
+### transpiler from gua:
+<details>
+<summary>Example</summary>
+
 ```go
 std := _G
 setmt := std.setmetatable
@@ -51,7 +56,14 @@ for p.x < 20 {
 
 std::print(p)
 ```
-to lua:
+
+</details>
+
+### to lua:
+
+<details>
+<summary>Example</summary>
+
 ```lua
 local std = _G
 local setmt = std.setmetatable
@@ -93,4 +105,17 @@ while p.x < 20 do
 end
 std.print(p)
 ```
-for more examples, see [test.lua](./test.lua)
+
+</details>
+
+## HOWTO
+
+* run gua:
+```sh
+$ lua gua.lua test.gua
+```
+
+* transpile to lua:
+```sh
+$ lua gua.lua test.gua test.lua
+```

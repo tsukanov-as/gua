@@ -180,6 +180,29 @@ test "return_04"
     return x
 ]]
 
+test "return_04"
+[[
+    x := 1
+    switch x {
+    case 1: return x
+    case 2: return x
+    default: return x
+    }
+    return x
+]]
+[[
+    local x = 1
+    local case = x
+    if case == 1 then
+        return x
+    elseif case == 2 then
+        return x
+    else
+        return x
+    end
+    return x
+]]
+
 test "if_01"
 [[
     x := 2

@@ -640,29 +640,29 @@ local function parse_operand()
         local pos, len, val = p_tokpos, #p_lit, p_val
         scan()
         local tail = parse_tail()
-        node = Node({"value", pos, len, val, tail})
+        return Node({"value", pos, len, val, tail})
     elseif case == "id" then
-        node = parse_id(true)
+        return parse_id(true)
     elseif case == "(" then
-        node = parse_paren()
+        return parse_paren()
     elseif case == "{" then
-        node = parse_table()
+        return parse_table()
     elseif case == "[" then
-        node = parse_list()
+        return parse_list()
     elseif case == "func" then
-        node = parse_func(true)
+        return parse_func(true)
     elseif case == "..." then
-        node = Node({"vararg", p_tokpos, 3})
+        local node = Node({"vararg", p_tokpos, 3})
         scan()
+        return node
     else
         if LITERALS[p_tok] then
-            node = Node({"value", p_tokpos, #p_lit, p_val})
+            local node = Node({"value", p_tokpos, #p_lit, p_val})
             scan()
-        else
-            errorf("expected operand, found '%s'", p_tok)
+            return node
         end
+        errorf("expected operand, found '%s'", p_tok)
     end
-    return node
 end
 local function parse_pow()
     local pos = p_tokpos
@@ -1082,7 +1082,7 @@ local function parse_return()
             scan()
         end
     end
-    if p_tok and p_tok ~= "case" then
+    if p_tok and p_tok ~= "case" and p_tok ~= "default" then
         expect("}")
     end
     return Node({"return", pos, p_endpos - pos, list})
@@ -1330,8 +1330,8 @@ local function emit(s)
 end
 local emit_expr = nil
 local function emit_field(node)
-    local args = node[4]
     local name = node[5]
+    local args = node[4]
     if args then
         if node[6] then
             emit(":" .. name)
@@ -1385,12 +1385,13 @@ local function emit_value(node)
     end
 end
 local function emit_id(node)
-    local tail, args, _const = node[5], node[6], node[7]
+    local _const = node[7]
     if _const and _const[1] == "value" then
         emit_value(_const)
         return
     end
     emit(node[4])
+    local args = node[6]
     if args then
         emit("(")
         if #args > 0 then
@@ -1402,6 +1403,7 @@ local function emit_id(node)
         end
         emit(")")
     end
+    local tail = node[5]
     if tail then
         for _, v in ipairs(tail) do
             if v[1] == "field" then
@@ -1414,7 +1416,8 @@ local function emit_id(node)
 end
 local function emit_pair(node)
     local key = node[4]
-    if key[1] == "id" and not key[5] and not key[6] then
+    local case = key[1]
+    if (case == "id") and (not key[5] and not key[6]) then
         local name = key[4]
         if KEYWORDS[name] or RESERVED[name] then
             emit("[\"")
@@ -1423,7 +1426,7 @@ local function emit_pair(node)
         else
             emit_expr(key)
         end
-    elseif key[1] == "index" then
+    elseif case == "index" then
         emit_index(key)
     else
         emit("[")
@@ -1473,7 +1476,7 @@ end
 local function emit_unop(node)
     local op = LUA_OPS[node[4]]
     if op ~= "+" then
-        emit(LUA_OPS[node[4]])
+        emit(op)
     end
     emit_expr(node[5])
 end
@@ -1568,8 +1571,9 @@ local function emit_let(node)
     v_res[#v_res] = "\n"
 end
 local function emit_if(node)
-    local left, right = node[7], node[8]
+    local left = node[7]
     if left then
+        local right = node[8]
         emit(space() .. "local ")
         for _, v in ipairs(left) do
             emit(v[4])
@@ -1665,8 +1669,7 @@ local function emit_switch(node)
     end
 end
 local function emit_for(node)
-    local expr = node[4]
-    local block = node[5]
+    local expr, block = node[4], node[5]
     local body = block[4]
     if not expr and #body > 0 then
         local last = body[#body]
@@ -1724,8 +1727,8 @@ local function emit_for_in(node)
     emit(space() .. "end\n")
 end
 local function emit_return(node)
-    local list = node[4]
     emit(space() .. "return")
+    local list = node[4]
     if list then
         emit(" ")
         for _, v in ipairs(list) do
@@ -1843,20 +1846,25 @@ end
 do
     local fn = _G.arg[1]
     if fn then
-        local os, io, pcall, print = _G.os, _G.io, _G.pcall, _G.print
+        local os, io, pcall, print, run = _G.os, _G.io, _G.pcall, _G.print, _G.loadstring
         local src = io.open(fn, "r"):read("*a")
         local r, m = pcall(parse_module, src, fn)
         if r then
             local res = emit_module(m, 0)
             local out = _G.arg[2]
             if out then
-                io.open(out, "w"):write(res)
-            else
-                local f = io.open(fn .. ".lua", "w")
+                local f = io.open(out, "w")
                 f:write(res)
                 f:close()
+                print(os.clock())
+            else
+                local f, err = run(res)
+                if err then
+                    print(err)
+                    os.exit(1)
+                end
+                f()
             end
-            print(os.clock())
         else
             print(m)
             os.exit(1)
