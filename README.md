@@ -126,7 +126,7 @@ $ lua gua.lua test.gua test.lua
 * go-style `if`
 * go/lua-style `for`
 * js-style map/list literals
-* `switch`
+* `switch` without `break`
 * `const`
 * `continue`
 * global variables are prohibited except for `_G`
