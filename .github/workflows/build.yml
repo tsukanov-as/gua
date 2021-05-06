@@ -31,3 +31,6 @@ jobs:
     - name: Test gua
       run: lua test.lua
 
+    - name: Run example
+      run: lua gua.lua example.gua
+
