@@ -1846,7 +1846,7 @@ end
 do
     local fn = _G.arg[1]
     if fn then
-        local os, io, pcall, print, load = _G.os, _G.io, _G.pcall, _G.print, _G.load
+        local os, io, pcall, print, load = _G.os, _G.io, _G.pcall, _G.print, _G.loadstring or _G.load
         local src = io.open(fn, "r"):read("*a")
         local r, m = pcall(parse_module, src, fn)
         if r then
