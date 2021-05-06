@@ -123,7 +123,7 @@ $ lua gua.lua test.gua test.lua
 ## FEATURES
 
 * go-style syntax
-* go-style if
+* go-style `if`
 * go/lua-style `for`
 * js-style map/list literals
 * `switch`
