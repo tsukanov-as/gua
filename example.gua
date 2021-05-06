@@ -1,0 +1,45 @@
+std := _G
+setmt := std.setmetatable
+
+Type := {}
+func (t Type) __call(x) {
+    x = x || {}
+    x.__index = x
+    return setmt(x, t)
+}
+setmt(Type, Type)
+
+Color := Type([0, 0, 0])
+
+func (c Color) __tostring() {
+    return std::string::format("[%d, %d, %d]", c[1], c[2], c[3])
+}
+
+Point := Type({
+    x: 0,
+    y: 0,
+    c: nil,
+})
+
+func (p Point) move(dx, dy) {
+    p.x += dx
+    p.y += dy
+}
+
+func (p Point) __tostring() {
+    return std::string::format("x: %d, y: %d, c: %s", p.x, p.y, std::tostring(p.c))
+}
+
+p := Point({
+    x: 10,
+    y: 10,
+    c: Color(),
+})
+
+p.c[1] = 255
+
+for p.x < 20 {
+    p.move(1, 0)
+}
+
+std::print(p)

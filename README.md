@@ -112,12 +112,12 @@ std.print(p)
 
 * run gua:
 ```sh
-$ lua gua.lua test.gua
+$ lua gua.lua example.gua
 ```
 
 * transpile to lua:
 ```sh
-$ lua gua.lua test.gua test.lua
+$ lua gua.lua example.gua example.lua
 ```
 
 ## FEATURES
