@@ -4,3 +4,4 @@ jit/*
 coverage/*
 cover.sh
 TODO
+.vscode/settings.json
