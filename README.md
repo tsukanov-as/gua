@@ -119,3 +119,18 @@ $ lua gua.lua test.gua
 ```sh
 $ lua gua.lua test.gua test.lua
 ```
+
+## FEATURES
+
+* go-style syntax
+* go-style if
+* go/lua-style `for`
+* js-style map/list literals
+* `switch`
+* `const`
+* `continue`
+* global variables are prohibited except for `_G`
+* shadowing of variable is prohibited
+* `.` instead of `:` for method calls with `self`
+* `::` instead of `.` for method calls without `self` (like namespaces)
+* only `"` for strings
