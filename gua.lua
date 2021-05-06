@@ -1846,7 +1846,7 @@ end
 do
     local fn = _G.arg[1]
     if fn then
-        local os, io, pcall, print, run = _G.os, _G.io, _G.pcall, _G.print, _G.loadstring
+        local os, io, pcall, print, load = _G.os, _G.io, _G.pcall, _G.print, _G.load
         local src = io.open(fn, "r"):read("*a")
         local r, m = pcall(parse_module, src, fn)
         if r then
@@ -1858,7 +1858,7 @@ do
                 f:close()
                 print(os.clock())
             else
-                local f, err = run(res)
+                local f, err = load(res)
                 if err then
                     print(err)
                     os.exit(1)

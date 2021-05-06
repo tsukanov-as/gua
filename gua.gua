@@ -1902,7 +1902,7 @@ func emit_module(node, level) {
 
 {
     if fn := _G.arg[1]; fn {
-        os, io, pcall, print, run := _G.os, _G.io, _G.pcall, _G.print, _G.loadstring
+        os, io, pcall, print, load := _G.os, _G.io, _G.pcall, _G.print, _G.load
         src := io::open(fn, "r").read("*a")
         r, m := pcall(parse_module, src, fn)
         if r {
@@ -1913,7 +1913,7 @@ func emit_module(node, level) {
                 f.close()
                 print(os::clock())
             } else {
-                f, err := run(res)
+                f, err := load(res)
                 if err {
                     print(err)
                     os::exit(1)
