@@ -225,6 +225,7 @@ ALPHA_OR_DIGIT := {}
 // parser state
 p_path := nil
 p_src := nil
+p_len := 0
 p_line := 1
 p_curpos := 0
 p_tokpos := 0 // current token pos
@@ -260,11 +261,14 @@ func scan() {
         p_lit = ""
         p_val = nil
         p_endpos = pos
-        for tok == SPACE {
+        for i := pos+1, p_len+1 {
+            if tok != SPACE {
+                break
+            }
             if chr == LF {
                 p_line = p_line + 1
             }
-            pos += 1; chr = byte(src, pos)
+            pos = i; chr = byte(src, pos)
             tok = MAP[chr]
         }
         p_tokpos = pos
@@ -1314,6 +1318,7 @@ parse_block = func(vars, loop) {
 func parse_module(src, path, vars) {
     p_path = path
     p_src = src
+    p_len = #src
     p_line = 1
     p_curpos = 0
     p_tokpos = 0

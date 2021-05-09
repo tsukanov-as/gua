@@ -182,6 +182,7 @@ do
 end
 local p_path = nil
 local p_src = nil
+local p_len = 0
 local p_line = 1
 local p_curpos = 0
 local p_tokpos = 0
@@ -215,11 +216,14 @@ local function scan()
         p_lit = ""
         p_val = nil
         p_endpos = pos
-        while tok == 3 do
+        for i = pos + 1, p_len + 1 do
+            if tok ~= 3 then
+                break
+            end
             if chr == 0x0A then
                 p_line = p_line + 1
             end
-            pos = pos + 1;
+            pos = i;
             chr = byte(src, pos)
             tok = MAP[chr]
         end
@@ -1283,6 +1287,7 @@ end
 local function parse_module(src, path, vars)
     p_path = path
     p_src = src
+    p_len = #src
     p_line = 1
     p_curpos = 0
     p_tokpos = 0
